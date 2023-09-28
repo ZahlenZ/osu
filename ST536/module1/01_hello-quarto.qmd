@@ -1,0 +1,55 @@
+---
+title: "Hello Quarto!"
+author: Charlotte Wickham
+format: pdf
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+Let's start by loading some packages:
+
+```{r}
+#| message: false
+library(tidyverse)
+library(viridis)
+```
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+Code chunks can have more than one line of code:
+
+```{r}
+x <- 5
+y <- 10
+```
+
+When you send code to the Console, it only has access to the variables you've created in your workspace. When you render the document, code has access to any variables created earlier in the document (but not variables on the Console). This next chunk will work when the document is rendered:
+
+```{r}
+x + y
+```
+
+Code chunks can generate plots:
+
+```{r}
+ggplot(faithfuld, aes(waiting, eruptions)) +
+ geom_raster(aes(fill = density)) +
+  scale_fill_viridis()
+```
+
+Here's another code chunk with an option set:
+
+```{r}
+#| echo: false
+2 * 2
+```
+
+The `echo: false` option disables the printing of code (only output is displayed in the rendered document).
