@@ -1,0 +1,132 @@
+---
+title: "Homework 2"
+author: Zahlen Zbinden
+format: pdf
+---
+
+```{r setup}
+#| message: false
+library(tidyverse)
+library(RColorBrewer)
+```
+
+Tasks that require an answer are bolded (inside `**` in the .Rmd file). For any task that includes a question (i.e. it ends with "?"), you should also answer the question in sentence form.
+
+# Looking at Data
+
+The following tasks all relate to the dataset `starwars` that comes with the dplyr package. Since, dplyr is included in the tidyverse, you don't need to import this data, just type its name to see it:
+
+```{r}
+starwars
+```
+
+It contains attributes of the characters in *some* of the Star Wars films. You can find out more about the variables by examining the help page:
+
+```{r}
+#| eval: false
+?starwars
+```
+
+## 1.
+
+**How many rows and columns does the dataset `starwars` have?** *(Use the output from the above chunk to answer this question)* (1pt)
+
+The starwars data set has 87 rows, and 14 attributes (columns)
+
+## 2.
+
+The following code extracts the characters from the starwars data are not human and saves the result to a variable called `not_humans`.
+
+```{r}
+not_humans <- filter(starwars, species != "Human")
+```
+
+**How many non-human characters are in the dataset?** (2pts) (*Your answer should include code, relevant output, and a complete sentence answer to the question.*)
+
+The not_humans subset of the starwars data set contains 48 non_human observations.
+
+```{r}
+nrow(not_humans)
+```
+
+## 3.
+
+**Create a scatterplot of all (human and non-human) characters' mass against their height, using color to represent sex.** (2pts)
+
+```{r}
+ggplot(starwars, aes(x = mass, y = height, color = sex)) +
+    geom_point(size = 2, alpha = 0.5, na.rm = T) +
+    labs(title = "Mass Vs. Height", x = "Mass", y = "height") +
+    scale_color_brewer(palette = "Set1") +
+    theme(
+        text = element_text(size = 15),
+        axis.title.y = element_text(angle  = 0, vjust  = 0.5)
+    )
+```
+
+## 4.
+
+**Make a scatter plot of the non-human characters mass against their height.** (1pt)
+
+```{r}
+ggplot(not_humans, aes(x = mass, y = height)) +
+    geom_point(size = 2, alpha = 0.5, na.rm = T) +
+    labs(title = "Non-Human Mass Vs. height", x = "Mass", y = "Height") +
+    scale_color_brewer(palette = "Set1") +
+    theme(
+        text = element_text(size = 15),
+        axis.title.y = element_text(angle = 0, vjust = 0.5)
+    )
+```
+
+## 5.
+
+**Make a barchart of all (human and non-human) characters' eye colors.** (1pt)
+
+```{r}
+custom_colors <- c(
+    "black" = "black", 
+    "blue" = "blue", 
+    "blue-gray" = "darkslategray4", 
+    "brown" = "chocolate4", 
+    "dark" = "bisque4",
+    "gold" = "darkgoldenrod1",
+    "green, yellow" = "darkolivegreen2",
+    "hazel" = "#C9C789",
+    "orange" = "darkorange1",
+    "pink" = "deeppink",
+    "red" = "red",
+    "red, blue" = "darkorchid",
+    "unknown" = "azure4",
+    "white" = "azure",
+    "yellow" = "yellow"
+)
+ggplot(starwars, aes(x = eye_color, fill = eye_color)) +
+    geom_bar() +
+    scale_fill_manual(values = custom_colors) +
+    labs(title = "Count of Eye Colors", x = "Eye Colors", y = "Count") +
+    guides(fill = guide_legend(ncol = 2)) +
+    theme(
+        text = element_text(size = 10),
+        axis.title.y = element_text(angle = 0, vjust = 0.5),
+        axis.text.x = element_text(angle = 45)
+    )
+```
+
+## 6.
+
+**Make a histogram of all (human and non-human) character's mass.** (1pt)
+
+```{r}
+ggplot(starwars, aes(x = mass)) +  
+    geom_histogram(bins = 50) +
+    labs(title = "Characters Mass", x = "Mass", y = "Count") +
+    theme(
+        text = element_text(size = 15),
+        axis.title.y = element_text(angle = 0, vjust = 0.5)
+    )
+```
+
+------------------------------------------------------------------------
+
+(2pts) For correct `author` in header, and submitting both PDF and Quarto files.

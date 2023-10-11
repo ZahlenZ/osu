@@ -1,0 +1,84 @@
+---
+title: "Homework 1"
+author: Zahlen Zbinden
+format: pdf
+---
+
+```{r setup}
+#| message: false
+library(tidyverse)
+```
+
+Tasks that require an answer are bolded (inside `**` in the .qmd file). For any task that includes a question (i.e. it ends with "?"), you should also answer the question in sentence form.
+
+# Quarto
+
+## 0.
+
+Before making any changes to this document, **Render** it to verify you have all the necessary components installed. You can double check the PDF output you get against the `homework_01.pdf` provided on the Assignment page in canvas.
+
+If you run into any difficulties with this first step, ask for help ASAP.
+
+## 1.
+
+**Edit the `author:` line in the top section of this document to replace my name with yours**. (1 pt)
+
+It's good practice to check changes as you go. So, once you've made the change, **Render** this document again, and check the document renders without error, and your name has indeed replaced mine in the PDF output.
+
+# Reading and Writing R Code
+
+## 2.
+
+**Write code that accomplishes the following steps in this order:** (4 pts)
+
+1.  Assign a variable called `temp_f` the value `32`
+2.  Subtract 32 from `temp_f`, then divide it by 1.8. Assign the result to a variable called `temp_c`
+3.  Call the function `paste()` with `temp_f` as the first argument, `temp_c` as the second argument and the `sep` argument set to `"F converted to C is "`.
+
+```{r}
+# Your code goes inside this code chunk
+temp_f <- 32
+temp_c <- (temp_f - 32) / 1.8
+paste(temp_f, temp_c, sep = "F converted to C is ")
+```
+
+If your code is correct, the result of running the chunk should be:
+
+    [1] "32F converted to C is 0"
+
+## 3.
+
+This week, you've seen how naming the arguments in a call to a function is optional, but can increase the readability of the code. For instance, this line of code doesn't name any of the arguments to `log()`:
+
+```{r}
+#| results: hide
+log(1, 2)
+```
+
+Whereas, this code, which does the exact same thing, names all of its arguments explicitly:
+
+```{r}
+#| results: hide
+log(x = 1, base = 2)
+```
+
+**Re-write each line of code in the chunk below to explicitly name all of the arguments:** (4 pts)
+
+```{r}
+#| fig-keep: none
+#| results: hide
+choose(n = 4, k = 2)
+
+mean(x = LakeHuron, trim = 0.1, na.rm = TRUE)
+
+ggplot(data = diamonds, mapping = aes(x = carat, y = price)) +
+    geom_point()
+```
+
+*(Hint: You might need to look at the help for each function to find out the argument names)*
+
+## 4.
+
+**Submit your work** (1 pt)
+
+Make sure you Render your completed file once you've completed all the tasks. Double-check the PDF file contains all your solutions, then submit both the Quarto file (`homework_01.qmd`) and the PDF file (`homework_01.pdf`).
