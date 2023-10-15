@@ -1,0 +1,31 @@
+---
+title: Assignment 1
+author: Zahlen Zbinden
+format: pdf
+---
+# Libraries
+```{r}
+library(ggplot2)
+```
+
+# Problems
+
+1. The iris Flower dataset.
+
+        a.  What is the variance of sepal length?
+        b. What is the covariance between Sepal Width and Petal Width?
+        c. If we measured variables petal width in in instead of cm, but changed nothing 
+        else, what would be the new covariance between Sepal Width and Petal Width?
+        The new variance would be:
+        $$$ 
+        \frac{\text{old variance}}{2.54} = -.048 
+        $$$
+
+```{r}
+iris_data <- read.csv("d:/zz/RepoMan/osu/data/irisData.csv")
+#a
+colMeans(iris_data[1:4])
+
+#b
+cov(iris_data[1:4])
+```

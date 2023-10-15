@@ -11,11 +11,6 @@ correlation <- cor(iris_data[1:4])
 # if iris_data$type = (1, 1, 2, 2, 3) then colors = (#0f630c, #0f630c, #108baa, #108baa, #d40bca)
 colors <- c("#0f630c", "#108baa", "#d40bca")[unclass(iris_data$Type)]
 pairs(iris_data, col = colors)
-legend(
-    "topright",
-    legend = levels(iris_data$Type),
-    fill = c("#0f630c", "#108baa", "#d40bca")
-)
 # Read in cubit data
 cubit <- read.csv("data/CubitData.csv")
 # Calculate the mean vector
@@ -25,14 +20,15 @@ covariance <- cov(cubit)
 # Find the eigen decomposition of the sample covariance matrix
 e_cov <- eigen(covariance)
 # Make a scatter plot for this data
-ggplot(cubit, aes(x = height, y = cubit)) +
+p <- ggplot(cubit, aes(x = height, y = cubit)) +
     geom_point() +
     geom_segment(
         aes(
             x = cubit_mean[1], 
             y = cubit_mean[2], 
-            xend = cubit_mean[1] + 2 * e_cov$vectors[1], 
-            yend = cubit_mean[2] + 2 * e_cov$vectors[2]
+            xend = cubit_mean[1] + e_cov$vectors[1], 
+            yend = cubit_mean[2] + e_cov$vectors[2]
         ),
         arrow = arrow(length = unit(.5, "cm"))
     )
+print(p)
