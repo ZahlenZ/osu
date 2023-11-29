@@ -1,0 +1,252 @@
+---
+title: "Module 5 R Activity"
+author: Zahlen Zbinden
+format: pdf
+execute:
+    echo: false
+---
+
+
+```{r}
+#| warning: false
+library(MASS)
+library(class)
+library(rpart)
+library(rpart.plot)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(GGally)
+library(caret)
+library(e1071)
+
+iris <- read_csv("D:/RepoMan/osu/data/IrisData.csv")
+vert <- read_csv("D:/RepoMan/osu/data/IrisData.csv")
+
+```
+
+## Question 1: Read in the BalWineData.csv, which contains measurements on 6 variables for 45. Display the first six rows of data
+
+```{r}
+#| warning: false
+wine <- read_csv("D:/RepoMan/osu/data/BalWineData.csv")
+head(wine)
+```
+
+## Question 2: Make a pairs plot of the 6 predictor variables of this data set, with points colored by the wine variety. Does it look like there is good separation between the three wine varieties using these six variables?
+
+In some of the variable pairs, like Alcohol and Flavonoids (and a few others) there is seperation, but with a good chunk of the pairs that is not very good seperation at all.
+
+```{r}
+#| warning: false
+#| fig.width: 10
+#| fig.height: 10
+ggpairs(wine, mapping = ggplot2::aes(color = as.factor(Variety)))
+```
+
+## Question 3: Calculate the two linear discriminant function directions for the "wine" data by hand. Give the coefficients for each drection.
+
+```{r}
+wine1 <- wine %>% filter(Variety == 1)
+wine2 <- wine %>% filter(Variety == 2)
+wine3 <- wine %>% filter(Variety == 3)
+
+n1 <- nrow(wine1)
+n2 <- nrow(wine2)
+n3 <- nrow(wine3)
+
+wine1_cov <- cov(wine1[1:6])
+wine2_cov <- cov(wine2[1:6])
+wine3_cov <- cov(wine3[1:6])
+
+wine1_xbar <- apply(wine1, 2, mean)
+wine2_xbar <- apply(wine2, 2, mean)
+wine3_xbar <- apply(wine3, 2, mean)
+
+wine_sp <- ((n1 - 1) * wine1_cov + (n2 - 1) * wine2_cov + (n3 - 1) * wine3_cov) / (n1 + n2 + n3)
+
+wine_s <- cov(wine[,1:6])
+
+w_mat <- (n1 + n2 + n3) * wine_sp
+t_mat <- (nrow(wine) - 1) * wine_s
+b_mat <- t_mat - w_mat
+
+w_inv_b <- solve(w_mat) %*% b_mat
+w_inv_b_eigen <- eigen(w_inv_b)
+
+v1 <- w_inv_b_eigen$vec[,1]
+v2 <- w_inv_b_eigen$vec[,2]
+
+y1_vals <- as.matrix(wine[1:6]) %*% v1
+y2_vals <- as.matrix(wine[1:6]) %*% v2
+```
+
+```{r}
+w_inv_b_eigen$values[1]
+w_inv_b_eigen$values[2]
+```
+
+## Question 4: compute the linear discriminatn values for both linear discriminatn directions. Plot the first linear disciminant values vs the second linear discriminaty values and color by variety. Are the Varieties well seperated?
+
+Yes, there is now clear seperation of the variables in respect to the Variety.
+
+```{r}
+data <- data.frame(y1 = y1_vals, y2 = y2_vals, Variety = wine$Variety)
+ggplot(data, aes(x = y1, y = y2, color = as.factor(Variety))) +
+    geom_point()
+```
+
+## Question 5: Use the lda() function to perform linear discriminant analysis on the "wine" data. Based on this output, how much of the total seperation does the first linear discriminant direction explain?
+
+It explains 61.15% of the total seperation.
+
+```{r}
+wine_lda <- lda(
+    Variety ~ Alcohol + MalicAcid + Ash + Magnesium + TotalPhenols + Flavonoids, 
+    data = wine
+)
+wine_lda
+```
+
+## Question 6: Suppose we have a new wine that has the following values for the six variables...Use LDA to predict which of the three varieties this new ine belongs to.
+
+This new wine is most likely part of variety 1.
+
+```{r}
+wine_new_obs = data.frame(
+    Alcohol = 14, MalicAcid = 5, Ash = 2, Magnesium = 120, TotalPhenols = 3, Flavonoids = 4
+)
+wine_predict <- predict(wine_lda, newdata = wine_new_obs)
+```
+
+## Question 7: supposed we have a new wine. Compute the unmodified QDA distances between this new wine and the sample mean of each variety. What are the distances for each variety? Which group would you assign this wine to?
+
+We can see from this analysis that the smallest distance is in type 2, which we would classify this new observation as Variety 2.
+
+```{r}
+qda_disc_1 <- as.matrix(wine_new_obs - wine1_xbar) %*% 
+    solve(wine1_cov) %*% 
+    t(wine_new_obs - wine1_xbar)
+qda_disc_2 <- as.matrix(wine_new_obs - wine2_xbar) %*%
+    solve(wine2_cov) %*%
+    t(wine_new_obs - wine2_xbar)
+qda_disc_3 <- as.matrix(wine_new_obs - wine3_xbar) %*%
+    solve(wine3_cov) %*%
+    t(wine_new_obs - wine3_xbar)
+
+c(qda_disc_1, qda_disc_2, qda_disc_3)
+```
+
+## Question 8: Use the qda() and predict.qda() functions to predict which group this new wine belongs to. What class is this new wine assigned to?
+
+This new wine is still assigned to Variety 2 based on this analysis.
+
+```{r}
+wine_qda <- qda(
+    Variety ~ Alcohol + MalicAcid + Ash + Magnesium + TotalPhenols + Flavonoids,
+    data = wine
+)
+wine_newobs_qdapred <- predict(wine_qda, newdata = wine_new_obs)
+wine_newobs_qdapred
+```
+
+## Question 9: Set a random seed of 12345, and then randomly partition the wine data into a training set of 90 observations and a test set of 45 observations. Display the first six rows of your training and test sets.
+
+```{r}
+ntrain <- 90
+p <- nrow(wine)
+set.seed(12345)
+train_rows <- sample(1:p, ntrain, replace = F)
+train_rows <- sort(train_rows)
+```
+
+
+```{r}
+wine_train <- wine %>% slice(train_rows)
+wine_test <- wine %>% slice(-train_rows)
+head(wine_train)
+head(wine_test)
+```
+
+## Question 10: fit a knn classifier to the wine data useing k=5 neighbors. what is your estimated classifcation error on the test data.
+
+The estimated classification error is 20%, 9 were misclassified out of 45.
+
+```{r}
+knn_rslt <- knn(wine_train[, 1:6], wine_test[, 1:6], cl = wine_train$Variety, k = 5)
+```
+
+```{r}
+knn_score <- table(wine_test$Variety, knn_rslt)
+(sum(knn_score) - sum(diag(knn_score))) /  nrow(wine_test)
+```
+
+## Question 11: fit a knn classified to the wine data using k=15 neighbors. what is your estimated classification error on the test data?
+
+The estimated classification error is 31%.
+
+```{r}
+knn_rslt <- knn(wine_train[, 1:6], wine_test[, 1:6], cl = wine_train$Variety, k = 15)
+knn_score <- table(wine_test$Variety, knn_rslt)
+(sum(knn_score) - sum(diag(knn_score))) /  nrow(wine_test)
+```
+
+## Question 12: using the same training and test set partition of the wine data, fit a CART classifciation model to the training wine data. What is the best (lowest) classification error you can obtain on the test set? Give the code and display the tree that achieves this lowest error rate?
+
+
+First lets obtain a base model
+```{r}
+wine_tree <- rpart(
+    Variety ~ Alcohol + MalicAcid + Ash + Magnesium + TotalPhenols + Flavonoids,
+    control = rpart.control(
+        minsplit = 30, minbucket = 5
+    ),
+    method = "class",
+    data = wine_train
+)
+wine_tree_testpred <- predict(wine_tree, wine_test[, 1:6])
+wine_tree_testpredc1 <- predict(wine_tree, wine_test[, 1:6], type = "class")
+table(wine_test$Variety, wine_tree_testpredc1)
+mean(wine_test$Variety != wine_tree_testpredc1)
+```
+
+Now lets run test on various hyperparameters
+
+```{r}
+wine_train$Variety <- as.factor(wine_train$Variety)
+wine_test$Variety <- as.factor(wine_test$Variety)
+```
+
+```{r}
+ctrl <- trainControl(method = "cv", number = 10)
+grid <- expand.grid(
+    .cp = seq(from = .01, to = .1, by = .01)
+)
+model <- train(
+    Variety ~ ., 
+    data = wine_train, 
+    method = "rpart", 
+    trControl = ctrl, 
+    tuneGrid = grid
+)
+predictions <- predict(model, newdata = wine_test[, 1:6])
+table(predictions, wine_test$Variety)
+```
+
+I have the best results with 13% error rate with a cp = .01, and default values of minbucket and minsplit.
+
+```{r}
+
+model <- rpart(
+    Variety ~ Alcohol + MalicAcid + Ash + Magnesium + TotalPhenols + Flavonoids,
+    control = rpart.control(
+        cp = .01,
+    ),
+    method = "class",
+    data = wine_train
+)
+model_testpred <- predict(model, wine_test[, 1:6])
+model_testpredc1 <- predict(model, wine_test[, 1:6], type = "class")
+table(wine_test$Variety, model_testpredc1)
+mean(wine_test$Variety != model_testpredc1)
+```

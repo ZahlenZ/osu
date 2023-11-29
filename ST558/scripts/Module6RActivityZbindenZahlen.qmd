@@ -1,0 +1,183 @@
+---
+author: Zahlen Zbinden 
+title: Module 6 R Activity
+output: pdf
+---
+
+```{r}
+#| echo: false
+#| warning: false
+library(CCA)
+library(dplyr)
+library(gt)
+library(tidyverse)
+```
+
+1. Read in psychdata.csv. save this as psych and display the first six rows.
+
+```{r}
+psych <- read_csv("D:/RepoMan/osu/data/PsychData.csv")
+head(psych) %>%
+    gt() %>% 
+    cols_label(
+        "Motiv" = "Motivation"
+    )
+```
+
+2. Make a pairs plot of the 6 variables in the psych data set. Based on these plots, make a guess as to how correlated the maximally correlated linear combinations of the sets of variables are. That is, what do you think the correlation between the first pair of canonical variables will be?
+
+50%. The first set of variables doesn't have much correlation with themselves, and the second set has much higher correlation with themselves, which leads me to believe that the correltation between the first pair of cononical variables will be about 50%.
+
+```{r}
+pairs(psych)
+```
+
+3. Read is Seed3Data.csv, and display the first sex rows of the dataset
+
+```{r}
+seeds <- read_csv("D:/RepoMan/osu/data/Seeds3Data.csv")
+head(seeds) %>%
+    gt()
+```
+
+4. Make a pairs plot of the 7 variables in the seeds dataset. Based on these plots, which variables to you think will be most heavily weighted in the first principal component? That is, what do you think the direction of maximal spread in the data seems to be?
+
+I think the variables that will be most heavily weighted will be Asymmetry and Area as the interaction between the two doesn't show a lot of correlation, the data looks very dispersed.
+
+```{r}
+pairs(seeds)
+```
+
+5. Calculate the coefficients for the first pair of canoncial variables for the psych data. What does the first canoncial variable seem to be measuring/comparing in the first set of variables (personality variables)? What does the first canoncial variable seem to be measuring/comparing in the second set of variables (standardized test variables)?
+
+In the first set of variables the weight of Locus is the highest, with a small influence from Self, and a slightly large than self influence from Motiv. In the second set of variables there is a very small weighting of all the variables, with the highest weighted being Write.
+
+```{r}
+x1 <- as.matrix(psych[, 1:3])
+x2 <- as.matrix(psych[, 4:6])
+
+sig11 <- cov(x1)
+sig22 <- cov(x2)
+sig12 <- cov(x1, x2)
+
+sig11.eig <- eigen(sig11)
+sig11.5 <- sig11.eig$vec %*% diag(sqrt(sig11.eig$val)) %*% t(sig11.eig$vec)
+
+sig22.eig <- eigen(sig22)
+sig22.5 <- sig22.eig$vec %*% diag(sqrt(sig22.eig$value)) %*% t(sig22.eig$vec)
+
+A1 <- solve(sig11.5) %*% sig12 %*% solve(sig22) %*% t(sig12) %*% solve(sig11.5)
+A2 <- solve(sig22.5) %*% t(sig12) %*% solve(sig11) %*% sig12 %*% solve(sig22.5)  
+
+A1.eig <- eigen(A1)
+A2.eig <- eigen(A2)
+
+e1 <- A1.eig$vec[,1]
+f1 <- A2.eig$vec[,1]
+
+a1 <- e1 %*% solve(sig11.5)
+b1 <- f1 %*% solve(sig22.5)
+
+a1
+b1
+```
+
+6. Plot the scored for the first canoncial variables against each other: U1 vs V1. Can you detect a positive correlation between these scores?
+
+I can detect a positive correlation when we flip the signs of one of the loading vectors, as it is customary to not report the correlation as a negative number. Here we can see a slight positive correlation between U1 and V1
+
+```{r}
+a1 <- -a1
+U1 <- x1 %*% t(a1)
+V1 <- x2 %*% t(b1)
+df <- data.frame(U1, V1)
+
+ggplot(df, aes(x = U1, y = V1)) +
+    geom_point()
+```
+
+7. Calculate the correlation between the first pair of canoncial variables. Was your guess from Question 2 in the right range?
+
+The correlation here is 44% which is close to my guess of 50%.
+
+```{r}
+sqrt(A1.eig$val[1])
+sqrt(A2.eig$val[1])
+
+cor(U1, V1)
+```
+
+8. Use the cc() function to perform canoncial correlation analysis on the psych data. Confim that the results match what you computed by hand: the coefficients, correlations, and centered scores.
+
+
+```{r}
+psych.cc <- cc(x1, x2)
+```
+
+Do the coefficients match?
+
+The coefficients do indeed match between the R function and the hand computed values.
+```{r}
+psych.cc$xcoef
+a1
+psych.cc$ycoef
+b1
+```
+
+Do the correlations match
+
+We can see that the corelations match between the R function and the hand computed values.
+```{r}
+psych.cc$cor[1]
+cor(U1, V1)
+```
+
+Do the Centered Scored match
+
+We can see that the centered scores match between the R fucntion and the hand computed values.
+```{r}
+U1.sc <- U1 - mean(U1)
+U1.sc[1:10, 1]
+psych.cc$scores$xscores[1:10, 1]
+```
+
+```{r}
+V1.sc <- V1 - mean(V1)
+V1.sc[1:10, 1]
+psych.cc$scores$yscores[1:10, 1]
+```
+
+9. Compute and report the unstandardized principal component directions (loadings) for the first two principal components of the seeds data. Did this direction match what you guessed in Question 4? Which variables are weighted most heavily in this first principal component (note that is is the magnitude of the loadings that we are interested in here, not the signs)
+
+The variables that are most heavily weighted are Asymmetry, Area, and Permieter. This is close to what my guess was, as I only guessed at the first two and not the thrid, I did think perhaps it would be Asymmetry and Area.
+
+```{r}
+seeds.pc <- prcomp(seeds)
+sort(seeds.pc$rotation[, 1])
+```
+
+10. How much of the variance in the seeds data is explained by the first three principal components?
+
+94% of the variance in the model is explained by the first three principal components.
+
+```{r}
+sum(seeds.pc$sdev[1:3]) / sum(seeds.pc$sdev)
+```
+
+11. How many principal components would you need to explain 90% of the total variance in the seeds data?
+
+You need at least 3 of the principal components to explain 90% of the total variance in the seeds data, as using only the first two principal components only results in 85% of the varianc explained.
+
+```{r}
+sum(seeds.pc$sdev[1:2]) / sum(seeds.pc$sdev)
+```
+
+12. Use the prcomp() function to compute the stadardized principal components for the seeds data. How much does the first principle component direction change from the unstandardized version?
+
+It changes by quite a bit as we can see from the sorted values of the first principal components loading vectors.
+
+```{r}
+seeds.pc.std <- prcomp(seeds, scale = TRUE)
+sort(seeds.pc.std$rotation[, 1])
+sort(seeds.pc$rotation[, 1])
+```

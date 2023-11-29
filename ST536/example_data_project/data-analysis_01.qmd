@@ -1,0 +1,10 @@
+---
+title: "A Comparison of Antartic Penguins"
+author: Your Name Here
+format: pdf
+---
+
+```{r}
+#| include: false
+library(tidyverse)
+```

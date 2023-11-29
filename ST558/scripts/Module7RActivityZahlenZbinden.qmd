@@ -1,0 +1,147 @@
+---
+author: "Zahlen Zbinden"
+title: "Module 7 R Activity"
+date: "11-18-2023"
+format: pdf
+---
+
+```{r}
+library(tidyverse)
+library(psych)
+```
+
+1. Read in Seeds3Data.csv, and display the first six rows of data
+
+```{r}
+#| warning: false
+seeds <- read_csv("D:/RepoMan/osu/data/Seeds3Data.csv")
+head(seeds)
+```
+
+2. Make a pairs plot. Based on these plots, does it look like the assumption of multivariate normality is at least remotely reasonable?
+
+A majority of the pairwise plots are eliptical or spherical, with a cluster of points in the middle, I think the assumption of multivariate normality is at least remotely reasonable.
+
+```{r}
+pairs(seeds)
+```
+
+3. Calculate and report the loadings matrix for the principal components factor analysis solution using the correlation matrix of the seeds data. (That is, using the standardized data)
+
+```{r}
+seeds_cor <- cor(seeds)
+seeds_eig <- eigen(seeds_cor)
+load_seeds <- seeds_eig$vec %*% diag(sqrt(seeds_eig$val))
+load_seeds
+```
+
+4. Examine the first three columns of the loadings matrix, can you come up with an interpretation for these first three factors?
+
+
+The first loading is all postive, compactness and asymmetry do not contribute as much as the rest. 
+```{r}
+load_seeds[,1]
+```
+
+The seconds loading is split between positive and negative, this is a contrast between the area, Compactness, and width with the remaining variables.
+```{r}
+load_seeds[,2]
+```
+
+The third loading is a contrast between area, perimeter, length, and groovelength with the remaining variables.
+```{r}
+load_seeds[,3]
+```
+
+5. Calculate the fitted corelation matrix for the three factor model, and find the residual matrix. Does it look like the principal components three-factor model captures most of the structure in the correlation matrix?
+
+Most of the differences are reasonably small in magniture, so the fit is decent.
+
+```{r}
+seeds_pca <- principal(r = cor(seeds), nfactors = 3, rotate = "none", scores = TRUE)
+seeds_pca
+```
+
+
+```{r}
+m <- 3
+uni_pcfa3 <- diag(seeds_cor - load_seeds[,1:m] %*% t(load_seeds[,1:m]))
+uni_pcfa3
+```
+
+
+```{r}
+fit_pcfa3 <- load_seeds[,1:m] %*% t(load_seeds[,1:m]) + diag(uni_pcfa3)
+fit_pcfa3
+```
+
+
+```{r}
+res_pcfa3 <- seeds_cor - fit_pcfa3
+res_pcfa3
+```
+
+6. Use the factanal() function to perform maximum likelihood factor analysis on the seeds data with m = 3 factors, with no rotation of the factors. Display the resulting object.
+
+```{r}
+seeds_mlfa3 <- factanal(x = seeds, factors = 3, rotation = "none")
+seeds_mlfa3
+```
+
+7. What is the result a hypothesis test that m = 3 factors is sufficient to explain the correlation structure in this data? Would you reject or fail to reject this null hypothesis?
+
+With a p-value ~= 0, i would rejet the null hypothesis that 3 factors are sufficient.
+
+8. Examine three columns of the loadings matrix: can you come up with an interpretation for these first three factors? Do these factors seem similar to the factors you dound using the principal components as a solution?
+
+The first factor has contribution from all of the factors except for asymmetry which is very similar to our first interpretation, the second shows contrast between the same variables as our first interpretation, and the third shows the same contrasts as our first interpretation again.
+```{r}
+seeds_mlfa3$loadings
+```
+
+9. Calculate the fitted correlation matrix for the three-factor model, and find the residual matrix. Does it look like the maximum likelihood three-factor model captures most of the structure in the correlation matrix?
+
+Yes the avlues are all very small, which would indicate that the three-factor model captures most of the structure in the correlation matrix.
+
+```{r}
+fit_mlfa3 <- seeds_mlfa3$load %*% t(seeds_mlfa3$load) + diag(seeds_mlfa3$uni)
+res_mlfa3 <- seeds_cor - fit_mlfa3
+```
+
+10. Does it look like the principal components three-factor solution or the maximum likelihood three-factor solution fits the observed correlation matrix better?
+
+The three-factor solution seems to fin the observed correlation matrix better.
+
+11. Use the factanal() function to perfom maximum likelihood factor analysis on the seeds data with 3 factors, with the varimax rotation of the factors. Display the resulting object, and compare teh factors with rotation to the factors without rotation, are the rotated factors substantially easier to interpret?
+
+They are easier to interpret as there is more seperation between the variables. This helps to showcase the relative differences better.
+
+```{r}
+seeds_mlfa3_rot <- factanal(x = seeds, factors = 3, rotation = "varimax")
+```
+
+12. Use the factanal() function, with the regression method.
+
+Display the scores for the 10th observation, speculate...
+
+We should see the variables that are part of factor 1 beiing negatively affected, the variables that are part of factor 2 will also be negatively affected but not at the same magnitude, and the variables of the final factor should be positive.
+
+
+Take the 10th observations scores, and multiply them by the loadings for each of the variables, both numbers are negative, and I would expect the 10th observation to be less than average.
+
+We can see that Compactness is less than average on the 10th observation, but GrooveLength is very slightly higher than average.
+
+```{r}
+seeds_mlfa3_rot_reg <- factanal(x = seeds, factors = 3, rotation = "varimax", score = "regression")
+seeds_mlfa3_rot_reg
+```
+
+
+```{r}
+seeds_mlfa3_rot_reg$scores[10,]
+```
+
+
+```{r}
+scale(seeds, center = TRUE, scale = F)[1:10,]
+```

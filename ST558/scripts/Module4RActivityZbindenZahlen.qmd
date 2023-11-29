@@ -1,0 +1,198 @@
+---
+title: "Module 4 R Activity"
+author: Zahlen Zbinden
+format: pdf
+execute:
+    echo: false
+---
+
+```{r}
+#| warning: false
+library(tidyverse)
+library(dplyr)
+library(ICSNP)
+library(rrcov)
+```
+
+1. Read in SeedsData.csv. Save this data as "seeds" and display the first six rows.
+
+```{r}
+#| warning: false
+seeds <- read_csv("D:/RepoMan/osu/data/SeedsData.csv")
+head(seeds)
+```
+
+2. Read in "PollutionData.csv". Save this data as "pollut" and display the first six rows.
+
+```{r}
+#| warning: false
+pollut <- read_csv("D:/RepoMan/osu/data/PollutionData.csv")
+head(pollut)
+```
+
+3. Using the seeds data, calculate the equal-variance version of the two-sample Hotellings $T^2$ test statistic to test that seed Variety 1 and seed Variety 2 have the same population mean vector. What is the value of the scaled version of the resulting $T^2$ test statistic?
+
+```{r}
+seeds_1 <- seeds %>% filter(Variety == 1)
+seeds_2 <- seeds %>% filter(Variety == 2)
+
+n1 <- nrow(seeds_1)
+n2 <- nrow(seeds_2)
+
+p <- ncol(seeds_1[1:7])
+
+seeds1_mean <- colMeans(seeds_1[1:7])
+seeds2_mean <- colMeans(seeds_2[1:7])
+
+seeds1_cov <- cov(seeds_1[1:7])
+seeds2_cov <- cov(seeds_2[1:7])
+
+pooled_cov <- (((n1 - 1) * seeds1_cov) + ((n2 - 1) * seeds2_cov)) / (n1 + n2 - 2)
+
+tryCatch(
+    {
+        T2 <- (seeds1_mean - seeds2_mean) %*% 
+        solve(((1 / n1) + (1 / n2)) * pooled_cov) %*% 
+        (seeds1_mean - seeds2_mean)
+        T2_scaled <- ((n1 + n2 - p - 1) / ((n1 + n2 - 2) * p)) * T2
+        pval_eq <- 1 - pf(T2_scaled, p, n1 + n2 - p - 1)
+    },
+    error = function(e) {
+        print(e)
+    }
+)
+print(
+    paste(
+        "The test statistic is", round(T2, 2), 
+        "and the scaled test statistic is", round(T2_scaled, 2)
+    )
+)
+```
+
+4. What is the p-value corresponding to the equal-variance version of the two sample Hotelling's $T^2$ test?
+
+```{r}
+tryCatch(
+    {
+        print(paste("The p-value of the Hotelling's T2 test is", pval_eq))
+    },
+    error = function(e) {
+        print(e)
+    }
+)
+```
+
+5. Based on the results of the equal-variance two sample Hotelling's $T^2$ test, what is your hypothesis test decision at level .05?
+
+My decision is to reject the null hypothesis that the population mean vectors for both samples is the same, as the p_value << .05. i.e. Reject $H_o: \mu_1 = \mu_2$
+
+6. For the seeds data use the HotellingsT2() function to confirm your calculations for the equal-variance version of the two-sample Hotelling's $T^2$ test statistic.
+
+```{r}
+tryCatch(
+    {
+        HotellingsT2(seeds_1[1:7], seeds_2[1:7])
+    },
+    error = function(e) {
+        print(e)
+    }
+)
+```
+
+7. For the seeds data, use the T2.test() function to confirm your calculations for the equal-variance version of the two-sample Hotelling's $T^2$ test statistic.
+
+```{r}
+T2.test(seeds_1[1:7], seeds_2[1:7])
+```
+
+8. Using the seeds data, calculate the unequal-variance version of the two-sample Hotelling's $T^2$ test statistic.
+
+```{r}
+T2 <- (seeds1_mean - seeds2_mean) %*%
+    solve(((1 / n1) * seeds1_cov) + ((1 / n2) * seeds2_cov)) %*%
+    (seeds1_mean - seeds2_mean)
+print(paste("The unequal T2 test variance is", T2))
+```
+
+9. What is the p-value corresponding to the unequal-variance version of two-sample Hotelling's $T^2$ test?
+
+```{r}
+pval_un <- 1 - pchisq(T2, p)
+print(paste("The p-value of the unequal variance test statistic is", pval_un))
+```
+
+10. Based on the results of the unequal-variance two-sample Hotelling's $T^2$ test, what is your hypothesis test decision at level 0.05?
+
+I reject the null $H_o: \mu_1 = \mu_2$ as the p-value << 0.05.
+
+11. Using the seeds data, perform MANOVA by hand to test the hypothesis that the population mean vectors for the three varieties are equal. $H_o: \mu_1=\mu_2=\mu_2$
+
+```{r}
+seeds_3 <- seeds %>% filter(Variety == 3) %>% subset(select = -Variety)
+n3 <- nrow(seeds_3)
+seeds3_mean <- colMeans(seeds_2)
+seeds3_cov <- cov(seeds_3)
+Ntot <- nrow(seeds)
+seeds_cov <- cov(seeds[1:7])
+
+ww <- (n1 - 1) * seeds1_cov + (n2 - 1) * seeds2_cov + (n3 - 1) * seeds3_cov
+tt <- (Ntot - 1) * seeds_cov
+
+lam_stat <- det(ww) / det(tt)
+print(paste("Wilk's lambda test statistic is", lam_stat))
+```
+
+12. What is the value of the scaled version of the Wilk's lambda statistic, that we would compare to the chi-squared distribution?
+
+```{r}
+p <- ncol(seeds[1:7])
+k <- length(unique(seeds$Variety))
+lam_stat_scaled <- -(Ntot - 1 - (p + k) / 2) * log(lam_stat)
+print(paste("The scaled version of Wilk's lambda is", lam_stat_scaled))
+```
+
+13. What is the p-value from the chi-squared approximation to the distribution of teh scaled Wilk's lambda test statistic?
+
+```{r}
+p_val <- 1 - pchisq(lam_stat_scaled, p * (k - 1))
+print(paste("The p-value from the chi-squared approximation is", p_val))
+```
+
+14. What is your conclusion based on this result: at a 0.05 confidence level, would you conclude that it is plausible that the three different wheat varieties have the same population mean vectors?
+
+I would reject the null hypothesis of $H_o:\mu_1=\mu_2=\mu_3$ as the p-value << 0.05, as well as Wilk's lamba not being "small".
+
+15. Uint the seeds data, perform a MANOVA using the Wilk.test() function to confirm the results you got by hand.
+
+```{r}
+Wilks.test(seeds[1:7], grouping = seeds$Variety)
+```
+
+16. Using the pollut data, fit a multivariate multiple regression model with the polutant levels "NO2" and "O3" as response variables, "Wind" and "SolarRad" as predictor variables. Are either of the predictors significant at level 0.1 in either of the univariate response models?
+
+We can see in NO2 ~ pollut_x that only the intercept is significant, and in O3 ~ pollut_x that SolarRad is significant at the 0.1 level.
+
+```{r}
+pollut_m <- as.matrix(pollut)
+pollut_y <- pollut_m[, 3:4]
+pollut_x <- pollut_m[, 1:2]
+
+mod_all <- lm(pollut_y ~ pollut_x)
+summary(mod_all)
+```
+
+17. Fit a reduced multivariate regression model that has just "Wind" as a predictor variable (leave out "SolarRad") and use the "anova()" function to compare this reduced model to the full model. What is your conclusion based on this result?
+
+We fail to reject the null hypothesis as the p-val = 0.1444 in the ANOVA test is > 0.05. There is no difference between the reduced model and the full model, which says that SolRad is not significant to determining the response variable. This is the opposite conclusion that we drew from the two single univariate tests, which showed that SolarRad was the only predictor variable that had significance in determining the response variable.
+
+```{r}
+pollut_x <- pollut_m[, 1]
+
+mod_red <- lm(pollut_y ~ pollut_x)
+summary(mod_red)
+```
+
+
+```{r}
+anova(mod_all, mod_red)
+```

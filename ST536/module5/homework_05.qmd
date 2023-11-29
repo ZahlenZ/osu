@@ -1,0 +1,176 @@
+---
+title: "Homework 5"
+author: Zahlen Zbinden
+format: pdf
+---
+
+```{r setup}
+#| message: false
+library(tidyverse)
+```
+
+Tasks that require an answer are bolded (inside `**` in the .Rmd file). For any task that includes a question (i.e. it ends with "?"), you should also answer the question in sentence form.
+
+# Vectors and Vector Functions
+
+## 1.
+
+(1 pt)
+
+The following three chunks are attempts to create vectors, but each one has a problem. Either the vector created is of the wrong type, or there is a syntax error. **Identify the problem, then fix the code in each chunk.**
+
+This should be a logical vector of length 5:
+
+```{r}
+typeof(as.logical(c("TRUE", "FALSE", "TRUE", "TRUE", "FALSE")))
+typeof(c(T, F, T, T, F))
+```
+
+This should be a character vector of length 4:
+
+```{r}
+#| error: true
+c("potato", "carrot", "eggplant", "lettuce")
+```
+
+This should be a double vector of length 4:
+
+```{r}
+#| error: true
+c(1.1, 6.4, 1.5, 0.9)
+```
+
+# 2.
+
+(2 pts)
+
+Consider the vector `x`:
+
+```{r}
+x <- c("10", "100%", "$1000")
+```
+
+**What type of vector is `x`?**
+
+x is a character vector
+
+```{r}
+typeof(x)
+```
+
+I mentioned the dangers of coercion with `as.numeric()`. readr, a tidyverse package, provides the function `parse_number()`. **Apply both `as.numeric()` and `parse_number()` to `x`, then in your own words describe the difference in their behaviour.**
+
+as.numeric can take a string that has no character and turn them into type numeric. parse_number() is more sophisticated and finds characters in the objects of the vector and removes them to find the number.
+
+```{r}
+as.numeric(x)
+parse_number(x)
+```
+
+# 3.
+
+(1 pt)
+
+Consider the following code and output:
+
+```{r}
+x <- c(1, 2, 3, 4)
+y <- c(TRUE, FALSE)
+x * y
+```
+
+**In your own words, describe how R arrives at the output.**
+x is of length 4, y is length 2. R is taking the short vector and repeating it till it gets the same length or longer than the first vector in the operation requested. Then takes as many elements as the first vector from the second vector and does the element math.
+
+# 4.
+
+(2 pts)
+
+Consider the `starwars` dataset from dplyr.
+
+**Add a column called `human` to `starwars` that takes the value `"Human"` if `species` is `"Human"` and `"Other"` otherwise.**
+
+```{r}
+starwars <- starwars %>%
+  mutate(human = ifelse(species == "Human", "Human", "Other"))
+```
+
+**Create a scatterplot of `height` versus `mass` with points colored by your new `human` column.**
+
+```{r}
+ggplot(starwars, aes(x = height, y = mass, color = human)) +
+  geom_point()
+```
+
+
+# 5.
+
+(2 pts)
+
+**How many characters in `starwars` have more than one skin color?** 
+
+Complete the following steps to answer the question.
+
+One strategy to look for multiple skin colors, is to look to see if the value for `skin_color` contains a comma.  E.g. 
+
+```{r}
+example_skin <- c("fair", "gold", "white, blue")
+str_detect(example_skin, ",")
+```
+
+**Create a new column in `starwars` called `many_cols` that contains `TRUE` if the characters `skin_color` contains a comma and `FALSE` otherwise.**
+
+```{r}
+starwars <- starwars %>%
+  mutate(many_cols = str_detect(skin_color, ","))
+
+starwars
+```
+
+**Filter `starwars` using the column `many_cols`.**
+
+```{r}
+starwars %>% filter(many_cols == F)
+```
+
+**Using the result from above, answer the question, how many characters in `starwars` have more than one skin color?** 
+
+```{r}
+nrow(starwars %>% filter(many_cols == F))
+```
+
+## 6.
+
+Here's a small example of taking a vector that contains years and converting it to a character vector representing decades:
+
+```{r}
+year <- c(1900, 1901, 1909, 1910, 1921, 1931, 2001)
+floor(year / 10) |> paste0("0's")
+```
+
+**Which functions in the second line of code are vector functions?**
+
+Here's some randomly generated data relating to prices over time:
+```{r}
+set.seed(2484) # so you all get the same "random" data
+prices <- tibble(
+  year = 1900:1950,
+  price = rnorm(n = length(year), mean = year/10)
+)
+prices
+```
+
+**Add a column `decade` that is a character string representing the decade corresponding the `year`**
+
+```{r}
+prices <- prices %>%
+  mutate(decade = floor(year / 10) %>% paste0("0's"))
+```
+
+**Use your new `decade` column to produce a summary with the mean price per decade.**
+
+```{r}
+prices %>%
+  group_by(decade) %>%
+  summarise(mean(price))
+```

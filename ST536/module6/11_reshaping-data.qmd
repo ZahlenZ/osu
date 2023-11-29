@@ -1,0 +1,307 @@
+---
+title: Reshaping Data
+---
+
+```{r setup}
+#| message: false
+
+library(tidyverse)
+library(dplyr)
+library(reshape2)
+```
+
+Example data from video:
+
+```{r}
+temps_wide <- tribble(
+  ~ day, ~ air, ~ soil,
+      1,    27,     15,
+      2,    31,     16,
+      3,    22,     15 
+)
+  
+temps_long <- tribble(
+  ~ day, ~ type,  ~ temp,
+      1,  "air",      27,
+      1, "soil",      15,
+      2,  "air",      31,
+      2, "soil",      16,
+      3,  "air",      22,
+      3, "soil",      15
+)
+```
+
+## `pivot_longer()`
+
+Stacks values spread across rows into columns.
+
+Two required arguments:
+
+-   `data`
+-   `cols`: the columns that need to be "stacked"
+
+Example data: stack the values from the `air` and `soil` columns:
+
+```{r}
+temps_wide
+pivot_longer(temps_wide, cols = c("air", "soil"))
+temps_wide %>% pivot_longer(c(air, soil))
+```
+
+`c()` in the `cols` argument is special, combines **column selectors**.
+
+Lots of other ways to specify columns to be pivoted. See options at:
+
+```{r}
+#| eval: false
+?tidyr_tidy_select
+```
+
+### Ways to select columns
+
+These selectors can also be used with `dplyr::select()`.
+
+Use `-` to specify which columns **not** to select:
+
+```{r}
+temps_wide %>% pivot_longer(-day)
+```
+
+Range with `:`:
+
+```{r}
+temps_wide %>% pivot_longer(2: 3)
+```
+
+Combine with `last_col()`:
+
+```{r}
+temps_wide %>% pivot_longer(air: last_col())
+```
+
+Also see helpers like `starts_with()`, `ends_with()`
+
+### Other arguments to `pivot_longer()`
+
+You'll get the default columns called `name` and `value`, set them to something different with:
+
+-   `names_to` name for the new column that will contain the old column names
+-   `values_to` name for the new column that will contain the values from the old columns
+
+E.g. I really want columns called `type` and `temp`:
+
+```{r}
+temps_wide %>% pivot_longer(c(air, soil), names_to = "Type", values_to = "Temp")
+```
+
+### Self Check
+
+Consider the following data stored in a variable called hr:
+
+```{r}
+hr <- tribble(
+  ~ subject, ~ day_1, ~ day_2,
+        "a",      65,      72,
+        "b",      75,      84
+)
+hr
+```
+
+Reshape this data into this form:
+
+| subject | day   |  hr |
+|:--------|:------|----:|
+| a       | day_1 |  65 |
+| a       | day_2 |  72 |
+| b       | day_1 |  75 |
+| b       | day_2 |  84 |
+
+```{r}
+#| error: true
+hr |> 
+  pivot_longer(-subject, names_to = "day", values_to = "hr")
+```
+
+## `pivot_wider()`
+
+Spreads values stacked in columns across rows
+
+Basic usage requires providing three arguments:
+
+-   `data`
+
+-   `names_from` Which existing column contains the values that should become the **new column names**? \_\_\_ in our example
+
+-   `values_from` Which existing column contains the values that should become the **values** in the new columns? \_\_\_ in our example
+
+```{r}
+temps_long %>% pivot_wider(names_from = "type", values_from = "temp")
+```
+
+### Self Check
+
+Consider the following data stored in the variable `bp`:
+
+```{r}
+bp <- tibble(
+  patient = c("a", "b", "c", "a", "b", "c"), 
+  time = c("before", "before", "before", "after", "after", "after"), 
+  bp = c(78L, 70L, 80L, 88L, 67L, 79L)
+)
+bp
+```
+
+What code would you need to reshape this data into the following form?
+
+| patient | before | after |
+|:--------|-------:|------:|
+| a       |     85 |    81 |
+| b       |     67 |    62 |
+
+```{r}
+bp %>% pivot_wider(names_from = "time", values_from = "bp") %>% filter(patient != "c")
+```
+
+## Practice Problems
+
+For each of the following, reshape the data into the specified form:
+
+-   Create `summary_stats`:
+
+    ```{r}
+    summary_stats <- tribble(
+      ~ variable, ~ statistic, ~ value,
+      "height",        "mean",      167,
+      "height",          "sd",       14,
+      "weight",        "mean",       67,
+      "weight",          "sd",        7,
+    )
+    summary_stats
+    ```
+
+    Reshape `summary_stats` into this form:
+
+        # A tibble: 2 × 3
+          variable  mean    sd
+          <chr>    <dbl> <dbl>
+        1 height     167    14
+        2 weight      67     7
+
+```{r}
+summary_stats %>% pivot_wider(names_from = statistic, values_from = value)
+```
+
+-   Create `sales_index`:
+
+    ```{r}
+    sales_index <- tibble::tribble(
+       ~type, ~Jan, ~Feb, ~Mar, ~Apr, ~May, ~Jun, ~Jul, ~Aug, ~Sep, ~Oct, ~Nov, ~Dec,
+      "in store",  146,  151,  236,  268,  181,  246,  217,  292,  249,  286,  211,  240,
+    "online",  264,  191,  104,  284,  109,  103,  175,  138,  148,  104,  111,  229
+    )
+    sales_index
+    ```
+
+    Reshape `sales_index` into the following form:
+
+        # A tibble: 24 × 3
+           type     name  value
+           <chr>    <chr> <dbl>
+         1 in store Jan     146
+         2 in store Feb     151
+         3 in store Mar     236
+         4 in store Apr     268
+         5 in store May     181
+         6 in store Jun     246
+         7 in store Jul     217
+         8 in store Aug     292
+         9 in store Sep     249
+        10 in store Oct     286
+        # … with 14 more rows
+
+```{r}
+sales_index %>% melt(id.var = "type", variable.name = "name", value.name = "value")
+```
+
+Go ahead and attempt these tasks on your own. If you run into problems, check out the corresponding thread in Ed Discussion.
+
+
+
+```{r}
+degree_days <- tribble(
+    ~ type,  ~`1`,  ~`2`,  ~`3`,  ~`4`,  ~`5`,  ~`6`,  ~`7`,  ~`8`,  ~`9`, ~`10`, ~`11`, ~`12`,
+"cooling", 	0, 	0, 	0, 	0, 	3,	14,	93,	91,	31, 	0, 	0, 	0,
+"heating",   830,   630,   438,   188,	41, 	1, 	0, 	1,	22,   159,   459,   762
+)
+col.names <- month.name[degree_days %>%  
+                          colnames() %>% 
+                          tail(12) %>% 
+                          as.integer
+                        ]
+col.names <- c("type", col.names)
+colnames(degree_days) <- col.names
+
+melt_days <- degree_days %>% 
+                melt(
+                  id.vars = "type", 
+                  variable.name = "month", 
+                  value.name = "days"
+                )
+```
+
+
+```{r}
+library(RColorBrewer)
+background_color = "#0d0a14"
+text_color = "#b88df1"
+```
+
+```{r}
+cooling <- melt_days %>%
+              filter(type == "cooling")
+
+ggplot(cooling, aes(x = month, y = days, color = type)) +
+  geom_segment(
+    aes(
+      x = month,
+      xend = month,
+      y = 0,
+      yend = days
+    ),
+    size = 2,
+    alpha = 0.75
+  ) +
+  geom_point(size = 5, alpha = 0.9) +
+  labs(
+    title = "Cooling Degree Days",
+    y = "Days",
+    x = "Month"
+  ) +
+  scale_color_brewer(type = "qual", palette = 2) +
+  theme(
+    plot.background = element_rect(fill = background_color),
+    panel.background = element_rect(fill = background_color),
+    axis.text = element_text(color = "white", size = 15),
+    axis.text.x = element_text(angle = 45), 
+    axis.title.y = element_text(color = "white", size = 15),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    legend.position = "none",
+    plot.title = element_text(color = "white", size = 20)
+  )
+```
+
+
+yearly total of cooling degree days and the realy total of heating degree days
+```{r}
+melt_days %>%
+  group_by(type) %>%
+  summarise("Total Days" = sum(days)) %>%
+  gt()
+```
+
+
+```{r}
+total <- melt_days %>%
+            summarise("Total" = sum(days))
+```

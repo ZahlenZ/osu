@@ -1,0 +1,114 @@
+---
+author: "Zahlen Zbinden"
+title: "Homework 4"
+date: "11-28-23"
+format: pdf
+---
+```{r setup, include = FALSE}
+library(tidyverse)
+library(ggplot2)
+library(ggcorrplot)
+library(RColorBrewer)
+library(psych)
+library(corpcor)
+library(GPArotation)
+```
+
+1. A study of aged 65 and older was conducted on a sample of generally healthy adults, randomly selected from Medicare rolls. A number of variables were measured for each subject.
+
+a. Perform a principal components factor analysis based on the given correlation matrix, for m = 2 and m = 3 factors. Describe how you might interpret the resulting factors for each model: can you describe the underlying latent variables for these two models? Which variables contribute most to each factor?
+
+```{r}
+physio <- read.table("D:/RepoMan/osu/data/PhysioData.csv", sep = ",")
+```
+
+first lets look for interrelated pair in the corelation matrix:
+
+We can see there is a cluster at fev with height, and weight. There is also less correletated cluster at crt with height and weight. There is another cluster with dsst, fev, and aai. We could say the correlated sets of variables at crt, weight, and height as well as dsst, fev, and aai.
+
+```{r}
+round(physio, 2)
+```
+
+```{r}
+physio |>
+  ggcorrplot()
+```
+
+```{r}
+pca_2 <- principal(r = physio, nfactors = 2, scores = TRUE)
+pca_2
+```
+
+We can see from the pca_2 model with rotate = "none", and from the model above that uses default varmax rotation with two factors, the first factor has a high correlation between heigh, weight, and fev, while the second factor has high correlation between aai, and dsst. We could call these factors lung condition and heart condition. As the first factor seems to indicate "healthier lungs" and the second seems to indicate "healthier heart". These are almost the same factors that I predicted at the top, but are in slightly different pairings, and do not include crt.
+
+```{r}
+pca_2_rotate <- principal(r = physio, nfactors = 2, rotate = "none", scores = TRUE)
+pca_2_rotate
+```
+
+
+For the three factor model:
+
+We can see the first factor is highly correlated along the variables, height, weights, crt, and fev, the second factor is associated with aai and dsst, and the third factor is associated with ldl, alb, and atrophy. These factors could be thought of as blood health, heart health, liver health.
+
+```{r}
+pca_3 <- principal(r = physio, nfactors = 3, rotate = "none", scores = TRUE)
+pca_3
+```
+
+b. What is the residual matrix for principal components factor analysis model with m = 2 factors, with m = 3 factors?
+
+First for the two factor
+```{r}
+reproduced <- pca_2_rotate$loadings %*% t(pca_2_rotate$loadings)
+residuals2 <- physio - reproduced
+residuals2
+```
+Then for the three factor
+```{r}
+reproduced <- pca_3$loadings %*% t(pca_3$loadings)
+residuals3 <- physio - reproduced
+residuals3
+```
+
+c. Perform a maximum likelihood factor analysis based on the given correlation matrix for m = 2 and m = 3 factors., describe how you might interpret the resulting factors for each model: can you describe the underlying latent variables for these two models? Which variables contribute most to each factor.
+
+For the 2 factor analysis we have weight, height, fev playing the largest role which is the same as the 2 factor analysis performed above, and could be interpreted as  "helthy lungs". And the second factor is between aai, dsst, and fev also plays a more important role in this model than in the PCA model. This could still be interpreted as "healthy heart"
+
+```{r}
+mlfa2 <- factanal(covmat = as.matrix(physio), factors = 2, rotation = "varimax")
+mlfa2
+```
+
+For the three factor model we see the first factor is most influenced by weight, height, crt and fev, this could still be interpretted as blood health, the second factor is contributed to by ldl, alb, and plt, which could be thought of as "liver health" still this score also is contributed to by infections, and the third factor is contributed to by aai, fev, and dsst, and could possibly be interpretted as "brain health" as there is a cognition component.
+
+```{r}
+mlfa3 <- factanal(covmat = as.matrix(physio), factors = 3, rotation = "varimax")
+mlfa3
+```
+
+d. What is the residual matrix for the maximum likelihood factor analysis model with m = 2 factors? with m = 3 factors?
+
+First for the 2 factor model
+```{r}
+reproduced <- mlfa2$loadings %*% t(mlfa2$loadings)
+residuals <- physio - reproduced
+residuals
+```
+
+Now for the 3 factor model
+
+```{r}
+reproduced <- mlfa3$loadings %*% t(mlfa3$loadings)
+residuals <- physio - reproduced
+residuals
+```
+
+e. Which method do you prefer for this data, Explain your choice.
+
+I prefer the maximum likelhood factor analysis method for this data, as it seems to produce a more clear distincition between the variables, and how they are working togther. It also has a much smaller residual matrix which would speak to the factors being more closely alligned in there ability to predict the correlations between the variables, as the difference between what the correlation is predicted to be with factor analysis and the true correlation is much smaller.
+
+f. Are the factors resulting from the two methods similar for the m = 2 and m = 3 models. 
+
+Yes they are similar, they utilize many of the same variable in the loadings, and showed similar correlations, however the maximum likelyhood factor analysis methods residual matrix is much smaller in magnitude, which would seem to suggest that model is slightly better, although not immediately discernable from the loadings, the resulting R2 matrix does speak to the second method being more closely alligned with the population.

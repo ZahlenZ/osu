@@ -1,0 +1,198 @@
+---
+author: Zahlen Zbinden 
+title: Data Analysis 2
+format: pdf
+execute: 
+    echo: false
+---
+
+```{r}
+#| warning: false
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(reshape2)
+library(tidyverse)
+library(RColorBrewer)
+library(gt)
+
+background_color = "#0d0a14"
+text_color = "white"
+```
+
+```{r}
+#| warning: false
+headers <- c(
+    "station_name",
+    "Year",
+    "Day",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+)
+report <- read_csv("data/report.csv", skip = 59, col_names = headers)
+```
+
+1. Is there any change in the yearly peak amount of snow over the period of 1992-2022?
+To support your answer to this question, construct a plot of the largest value of snow water equivalent each water year for each station.
+
+```{r}
+head(report) %>% 
+    gt() %>%
+    cols_label(
+        station_name = "Station Name"
+    )
+```
+
+
+```{r}
+#| warning: false
+report_long <- report %>% melt(
+    id.vars = c("station_name", "Year", "Day"),
+    variable.name = "Month",
+    value.name = "snow_water"
+)
+report_summary <- report_long %>%
+    mutate(snow_water_mod = ifelse(is.na(snow_water), 0, report_long$snow_water)) %>%
+    group_by(station_name, Year) %>%
+    summarise(max_value = max(snow_water_mod))
+
+```
+
+
+```{r}
+#| fig.width: 10
+#| fig.height: 8
+ggplot(report_summary, aes(x = Year, y = max_value, color = station_name)) +
+    geom_line(stat = "identity", alpha = 0.75, linewidth = 1) +
+    labs(
+        title = "Snow Water Equivalent",
+        x = "Year",
+        y = "Max Value (in.)"
+    ) +
+    scale_x_continuous(breaks = seq(from = 1992, to = 2022, by = 10)) +
+    scale_y_continuous(breaks = seq(from = 0, to = 70, by = 10)) +
+    scale_color_brewer(type = "qual", palette = 2, name = "Station Name") +
+    facet_wrap(station_name ~ .) +
+    theme(
+        plot.background = element_rect(fill = background_color),
+        plot.title = element_text(color = text_color, hjust = .5),
+        strip.background = element_rect(fill = background_color),
+        strip.text = element_text(color = text_color),
+        panel.grid.major = element_line(color = text_color),
+        panel.grid.minor = element_blank(),
+        panel.background = element_rect(fill = background_color),
+        legend.background = element_rect(fill = background_color),
+        legend.text = element_text(color = text_color),
+        legend.title = element_text(color = text_color),
+        legend.position = "none",
+        axis.title = element_text(color = text_color),
+        axis.text = element_text(color = text_color),
+    )
+```
+
+From the plot we can see that the two stations differ a bit in there change throughout the years. For the Hogg Pass station there appears to be a decrease in the max Snow Fall Equivalent year over year, as there is a steady decline in the max value at this Station between the years 1992 and 2022. For the Santiam Jct station, we can see that throughout the years they have big spikes, and moderate lows. There hasn't been a big spike since around 2007. There does seem to be an decrease in the average max snow fall, but its really hard to tell just from the plot.
+
+2. In the 2018 water year, how did the daily values of snow water equivalent compare between the two stations?
+To support your answer to this question, construct a plot of the daily snow water equivalent for both stations against the date of the measurement. Also, answer this question with a summary table with the first and last dates with non-zero values for snow water equivalent for each station.
+
+```{r}
+summary_18 <- report_long %>%
+                    filter(Year == 2018) %>%
+                    mutate(
+                        snow_water_mod = ifelse(
+                            is.na(snow_water), 0, report_long$snow_water
+                            )
+                        ) %>%
+                    mutate(date = paste(Month, Day, sep = "-"))
+```
+
+
+```{r}
+report_18 <- report_long %>%
+    filter(!is.na(snow_water)) %>%
+    mutate(date = paste(Month, Day, Year, sep = "-")) %>%
+    mutate(date = mdy(date)) %>%
+    filter(Year == 2018) %>%
+    group_by(station_name)
+```
+
+```{r}
+#| fig.width: 10
+#| fig.height: 8
+#| warning: false
+ggplot(report_18, aes(x = date, y = snow_water, color = station_name)) +
+    geom_line(linewidth = 1) +
+    facet_wrap(station_name ~ .) +
+    labs(
+        title = "Snow Water Equivalent 2018",
+        x = "Days",
+        y = "Value (in.)"
+    ) + 
+    scale_color_brewer(type = "qual", palette = 2) +
+    theme(
+        plot.background = element_rect(fill = background_color),
+        plot.title = element_text(color = text_color, hjust = .5),
+        strip.background = element_rect(fill = background_color),
+        strip.text = element_text(color = text_color),
+        panel.background = element_rect(fill = background_color),
+        legend.position = "none",
+        panel.grid.minor = element_blank(), 
+        axis.text = element_text(color = text_color),
+        axis.title = element_text(color = text_color)
+    )
+```
+
+```{r}
+df <- report_long %>%
+    filter(!is.na(snow_water)) %>%
+    filter(snow_water != 0) %>%
+    filter(Year == 2018) %>%
+    mutate(date = paste(Month, Day, Year, sep = "-")) %>%
+    mutate(date = mdy(date)) %>%
+    group_by(station_name) %>%
+    summarise(
+        first_date = min(date),
+        last_date = max(date)
+    )
+
+```
+
+
+Need to create "water year", which is the current year - 1 if the months are not October, November, or December
+```{r}
+df <- report_long %>%
+        filter(!is.na(snow_water), snow_water != 0) %>%
+        mutate(water_year = ifelse(
+            Month == "Oct" | Month == "Nov" | Month == "Dec", Year, Year - 1
+        )) %>%
+        filter(water_year == 2018) %>%
+        mutate(date = paste(Month, Day, Year, sep = "-")) %>%
+        mutate(date = mdy(date)) %>%
+        group_by(station_name) %>%
+        summarise(
+            first_date = min(date),
+            last_date = max(date)
+        )
+```
+
+```{r}
+df %>%
+    gt() %>%
+    cols_label(
+        station_name = "Station Name",
+        first_date = "First Date",
+        last_date = "Last Date"
+    )
+```
+
+Between the two stations in the year 2018 we can see that Hogg Pass gets significantly more Snow Water Equivalent, in magnitude. We can also see that Hogg Pass starts getting snow around a month sooner than Santiam Jct, as well as recieving snow for a month longer than Santiam Jct.

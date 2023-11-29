@@ -1,0 +1,208 @@
+---
+title: Assignment 1
+author: Zahlen Zbinden
+output: pdf_document
+---
+add libraries
+```{r}
+library(ICSNP)
+library(rrcov)
+```
+
+Read in the sweat data:
+```{r}
+file_path <- "D:/RepoMan/osu/data/SweatData.csv"
+sweat <- read.table(file = file_path, sep = ",", header = T)
+```
+
+1. Read in HRBPData.csv. save this as hrbp and display the first 6 rows
+```{r}
+file_path <- "D:/RepoMan/osu/data/HRBPData.csv"
+hrbp <- read.table(file = file_path, sep = ",", header = T)
+head(hrbp)
+```
+
+2. Produce all pairwise scatter plots of the variables in the hrbp data, and include the sample mean as a red solid point and the null hypothesis $\mu_0=[70,80,120]^t$ as solid green point.
+
+```{r}
+hrbp_mean <- colMeans(hrbp)
+samp_mean <- matrix(c(70, 80, 120), nrow = 1)
+colnames(samp_mean) <- c("HR", "DiaBP", "SysBP")
+hrbp_aug <- rbind(hrbp, hrbp_mean, samp_mean)
+```
+
+```{r}
+pairs(
+    hrbp_aug,
+    col = rep(1:3, c(40, 1, 1)),
+    pch = rep(c(1, 16), c(40, 3))
+)
+```
+
+3. Using the hrbp data, calculate the univariate t-statistic to test that the mean vector is $\mu_0 =[70, 80, 120]^T$. What are the values of the resulting t-statistic?
+
+First lets manually calculate all of the test statistics at the same time.
+```{r}
+mu <- c(70, 80, 120)
+hrbp_xbar <- apply(hrbp, 2, mean)
+hrbp_var <- apply(hrbp, 2, var)
+n <- nrow(hrbp)
+p <- ncol(hrbp)
+ts <- (hrbp_xbar - mu) / sqrt(hrbp_var / n)
+ts
+```
+
+To confirm our manual calculations lets compare the t stat for HR from the manual calcuations to the t stat from the function. If these align we will make the assumption that all of the manually calculated t stats are correct. As we can see they align, we got a t stat of 2.6296 from the manual calculations and a t stat of 2.6296 from the t.test function.
+```{r}
+t.test(hrbp[, 1], mu = mu[1])
+```
+
+4. Calculate the Bonferroni corrected p-values corresponding to the simultaneous univariate t-tests from the previous part.
+
+```{r}
+alpha <- .05
+alpha_star <- .05 / p
+crit_t <- qt(alpha_star / 2, df = n - 1, lower.tail = F)
+crit_t
+```
+
+```{r}
+any(abs(ts) > crit_t)
+```
+
+5. Based on the simultaneous univariate t-tests, would you reject the hypothesis that the population mean vector is $\mu_0 = [70, 80, 120]^T$?
+Yes I would reject the null hypothesis as at least one of the test statistics was larger than the critical value used with the Bonferroni method.
+
+6. Using the hrbp data, perform Hotelling's $T^2$ test by hand, with $H_0:\mu_0 = [70, 80, 120]^T$.
+    a. What is the value of the scaled test statistic?
+        i. 8.89
+    b. What is the resulting p-value?
+        i. .000144
+    c. What is the decision: would you reject or fail to reject the null hypothesis?
+        i. Since the p-value is less than $\alpha = .05$ we reject the null hypothesis
+
+```{r}
+n <- nrow(hrbp)
+p <- ncol(hrbp)
+hrbp_means <- colMeans(hrbp)
+mu <- c(70, 80, 120)
+s_cov <- cov(hrbp)
+
+T <- n * t((hrbp_means - mu)) %*% solve(s_cov) %*% (hrbp_means - mu)
+T_scale <- ((n - p) / ((n - 1) * p)) * T
+T
+T_scale
+```
+
+```{r}
+p <- 1 - pf(T_scale, df1 = p, df2 = n - p)
+p
+```
+
+7. Using the hrbp data, perform Hotelling's $T^2$ test using the T2.test() function to test the null hypothesis $\mu_0 = [70, 80, 120]^T$. Do the results match what you got by hand?
+    a. The results from this function mirror what I got by hand, both conclude that we reject the null hypothesis in favor of the alternative.
+
+```{r}
+T2.test(hrbp, mu = mu)
+```
+
+8. Read in HRBPPairedData.csv Save this data as hrbpPaired and display the first six rows.
+
+```{r}
+hrbpPaired <- read.csv("D:/RepoMan/osu/data/SweatPairedData.csv")
+head(hrbpPaired)
+```
+
+9. Compute the difference vectors, and use these diffferences to perform simultaneous univariate tests of the null hypothesis that mean heart rate, mean diastolic blood pressure, and mean systolic blood pressure are the same before and after walking a mile.
+    a. What are the values of the univariate t-statistic?
+        i. (1.291, -1.216, 1.081)
+    b. What are teh values of the Bonferroni corrected univariate p-values?
+        i. (.6366, .7164, .8799)
+    c. Based on these results, what would your decision be at level .05?
+        i. Based on the Bonferroni corrected p-values we would fail to reject the null hypothesis that heart rates are the same before and after walking a mile
+
+```{r}
+hrbp_difs <- hrbpPaired[, 4:6] - hrbpPaired[, 1:3]
+n <- nrow(hrbp_difs)
+p <- ncol(hrbp_difs)
+mu <- rep(0, 3)
+hrbp_difs_mean <- apply(hrbp_difs, 2, mean)
+hrbp_difs_var <- apply(hrbp_difs, 2, var)
+
+tstats <- sqrt(n) * (hrbp_difs_mean - mu) / sqrt(hrbp_difs_var)
+pvals <- 2 * (1 - pt(abs(tstats), n - 1))
+pvals_bonf <- pvals * p
+tstats
+pvals
+pvals_bonf
+```
+
+10. Perfom Hotelling's $T^2$ test on the paried data.
+    a. What is the value of the scaled test statistic?
+        i. 5.2754
+    b. What is the resulting p-value?
+        i. .009353
+    c. What is the decision: would you reject or fail to reject the null hypothesis?
+        i. Based on the p-value which is less than .05 we reject the null hypothesis in favor of the alternative.
+    d. How does this compare to the result you got from the simultaneous univariate tests?
+        i. In the simultaneous univariate tests we failed to reject the null hypothesis, and in the multivariate analysis we rejected the null hypothesis.
+
+```{r}
+T2.test(hrbp_difs, mu = mu)
+```
+
+11. Read in HRRepMeasData.csv save this data as hrRepMeas and display the first six rows.
+
+```{r}
+hrRepMeas <- read.csv("D:/RepoMan/osu/data/HRRepMeasData.csv")
+head(hrRepMeas)
+```
+
+12. Construct a contrast matrix and compute teh contrast observations correspoinding to that contrast matrix. Display the first six rows of your contrast observations
+
+```{r}
+contrast <- rbind(
+    c(-1, 1, 0, 0, 0),
+    c(-1, 0, 1, 0, 0),
+    c(-1, 0, 0, 1, 0),
+    c(-1, 0, 0, 0, 1)
+)
+hrRepMeas_means <- apply(hrRepMeas, 2, mean)
+
+contrast_obj <- as.matrix(hrRepMeas) %*% t(contrast)
+head(contrast_obj)
+```
+
+13. Perform Hotelling's $T^2$ test on these contrast observations to test that the average heart rate is the same as people watch each of these five TV shows.
+    a. What is the value of the scaled test statistic?
+        i. 1.4395
+    b. What is the reulting p-value?
+        i. .241
+    c. What is the decision: would you reject or fail to reject the hypothesis?
+        i. As the p-value is greater than .05 i would fail to reject the null hypothesis.
+
+```{r}
+p <- ncol(contrast_obj)
+T2.test(contrast_obj, mu = rep(0, p))
+```
+
+14. Construct a different contrast matrix, and again compute teh contrast observations and again perform Hotelling's $T^2$ test on these contrast observations to test that the average heart rate is the same as epople watch each of these five tv shows. Do you get the same results as in the previous part?
+    a. The same outcome is achieved with the different contrast matrix, only the mean x-vector has changed, and it is just multiplied by -1.
+
+```{r}
+contrast <- rbind(
+    c(1, -1, 0, 0, 0),
+    c(1, 0, -1, 0, 0),
+    c(1, 0, 0, -1, 0),
+    c(1, 0, 0, 0, -1)
+)
+hrRepMeas_means <- apply(hrRepMeas, 2, mean)
+
+contrast_obj <- as.matrix(hrRepMeas) %*% t(contrast)
+head(contrast_obj)
+```
+
+```{r}
+p <- ncol(contrast_obj)
+T2.test(contrast_obj, mu = rep(0, p))
+```

@@ -1,0 +1,98 @@
+---
+title: "A Comparison of Antarctic Penguins"
+author: Charlotte Wickham
+format: pdf
+execute:
+  echo: false
+---
+
+```{r}
+#| include: false
+library(tidyverse)
+```
+
+```{r}
+penguins <- read_csv("D:/RepoMan/osu/data/penguins.csv")
+```
+
+```{r}
+#| include: false
+# Some exploration to help with writing "Introduction"
+# How many penguins?
+nrow(penguins)
+penguins |> 
+  group_by(species) |> 
+  summarise(n())
+
+# When?
+penguins |> 
+  group_by(year) |> 
+  summarise(n())
+
+# Where?
+penguins |> 
+  group_by(species, island) |> 
+  summarise(n())
+```
+
+## Introduction
+
+A survey undertaken in 2007-2009 on the Palmer Archipelago in Antarctica resulted in measurements on 334 penguins of three species: Gentoo, Adelie, and Chinstrap. The Adelie penguins were located on three different islands: Biscoe, Dream and Torgersen, whereas the Gentoo penguins were only on Biscoe, and the Chinstrap penguins were only on Dream. Measurements made on the penguins included their: bill length (millimeters), bill depth (millimeters), flipper length (millimeters) and body mass (grams).
+ 
+This data will be used to answer two questions:
+
+-   How do bill area and bill ratio differ between the species?
+
+-   Are Adelie penguins different sizes on the different islands?
+
+## **How do bill area and bill ratio differ between the species?**
+
+Bill area is defined as the product of bill depth and bill length, and bill ratio is defined as the ratio of bill length to bill depth. A bill ratio greater than one indicates a bill that is longer than it is deep. @fig-bill-scatterplot plots the bill area against the bill ratio for all the penguins.
+
+```{r}
+#| fig-cap: "Scatterplot of bill ratio against bill area for three species of penguins."
+#| fig.width: 5
+#| fig.height: 3
+#| label: fig-bill-scatterplot
+penguins |> mutate(bill_area = bill_length_mm * bill_depth_mm, bill_ratio = bill_length_mm / bill_depth_mm) |> 
+  ggplot(aes(bill_area, bill_ratio)) + geom_point(aes(color = species)) +
+  labs(x = "Bill area",
+y = "Bill ratio",
+color = "Species"
+  )
+```
+
+From the scatterplot, we see the three species of penguin fall into three distinct clusters. While Adelie and Gentoo penguins have similar distributions of bill area, Adelie penguins have a distinctly lower bill ratio than Gentoo penguins. Chinstrap penguins have bill ratios that fall somewhere between those of Adelie and Gentoo penguins, but bill areas that tend to be larger than both of the other species. Within each of the three species, there doesn't seem to be any relationship between bill ratio and bill area.
+
+## **Are Adelie penguins different sizes on the different islands?**
+
+The table below contains the mean and standard deviation for the two body size measurements on the Adelie penguins across the three islands: body mass (g), and flipper length (mm).
+
+```{r}
+data <- penguins |> 
+  filter(species == "Adelie")
+nrow(data)
+```
+
+```{r}
+data |> 
+  group_by(island) |> 
+  summarise(
+    mean_flipper_length=mean(flipper_length_mm,na.rm=T),
+    sd_flipper_length=sd(flipper_length_mm,na.rm=T),
+    mean_body_mass=mean(body_mass_g,na.rm=T),
+    sd_body_mass=sd(body_mass_g,na.rm=T)
+  )
+```
+
+```{r}
+#| warning: false 
+#| fig.width: 5
+#| fig.height: 3
+#| label: fig-scatter-adelie
+data |> 
+  ggplot(aes(x = body_mass_g, y = flipper_length_mm)) +
+  geom_point(aes(color = island)) 
+```
+
+Both the mean and standard deviation of body mass and flipper length are similar for Adelie penguins across all three islands. A scatterplot of body mass and flipper length (@fig-scatter-adelie) shows considerable overlap in the distributions of body mass and flipper length for penguins on the different islands. This suggests the are no meaningful differences in the size of Adelie penguins on the three different islands.

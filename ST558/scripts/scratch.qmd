@@ -1,0 +1,95 @@
+---
+author: Zahlen Zbinden 
+title: scrath pad
+output: pdf
+---
+
+```{r}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(RColorBrewer)
+library(reshape2)
+library(ggridges)
+```
+
+```{r}
+df <- matrix(c(1, .83, .65, .55, .40, .11, .83, 1, .68, .62, .54, .23, .65, .68, 1, .83, .47, .07, .65, .68, 1, .83, .47, .07, .55, .62, .82, 1, .73, .29, .4, .54, .47, .73, 1, .63, .11, .23, .07, .29, .63, 1.0), ncol = 6)
+```
+
+
+```{r}
+s11 <- matrix(c(1,.83,.83,1), ncol = 2)
+s21 <- matrix(c(.65,.55,.40,.11,.68,.62,.54,.23), ncol = 2)
+s12 <- t(s21)
+s22 <- matrix(c(1,.83,.47,.07,.82,1,.73,.29,.47,.73,1,.63,.07,.29,.63,1), ncol = 4)
+```
+
+```{r}
+x <- seq(from = 0, to = 50, length.out = 10000)
+chi_2 <- dchisq(x, df = 2)
+chi_5 <- dchisq(x, df = 5)
+chi_15 <- dchisq(x, df = 15)
+chi_30 <- dchisq(x, df = 30)
+```
+
+```{r}
+x <- seq(from = 0, to = 50, length.out = 10000)
+chi_2 <- rchisq(10000, df = 2)
+chi_5 <- rchisq(10000, df = 5)
+chi_10 <- rchisq(10000, df = 10)
+chi_15 <- rchisq(10000, df = 15)
+chi_20 <- rchisq(10000, df = 20)
+chi_30 <- rchisq(10000, df = 30)
+```
+
+```{r}
+df <- data.frame(x, chi_2, chi_5, chi_10, chi_15, chi_20, chi_30)
+df_long <- df %>%
+    melt(
+        id.vars = "x",
+        variable.name = "variable",
+        value.name = "value"
+    )
+```
+
+```{r}
+ggplot(
+    df_long, 
+    aes(
+        x = value, 
+        y = variable,
+        fill = variable, 
+        color = variable
+    )
+) +
+    geom_density_ridges() +
+    labs(
+        title = "Chi-Squared Distributions",
+        x = "",
+        y = ""
+    ) +
+    scale_x_continuous(
+        limits = c(-5, 50)
+    ) +
+    scale_color_brewer(
+        type = "qual", 
+        palette = "Set2", 
+        name = "Degrees of Freedom",
+        labels = c(1, 5, 10, 15, 20, 30)
+    ) +
+    scale_fill_brewer(
+        type = "qual", 
+        palette = "Set2", 
+        name = "Degrees of Freedom",
+        labels = c(1, 5, 10, 15, 20, 30)
+    ) +
+    theme_minimal() +
+    theme(
+        axis.text = element_blank(),
+        axis.ticks.y = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+    )
+    
+```

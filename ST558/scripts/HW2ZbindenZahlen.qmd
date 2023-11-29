@@ -1,0 +1,228 @@
+---
+title: "Homework 2"
+author: Zahlen Zbinden
+format: pdf
+---
+
+```{r}
+#| echo: false
+#| warning: false
+library(tidyverse)
+library(dplyr)
+library(ICSNP)
+library(rrcov)
+```
+
+1. The scored obtained by n = 87 college students on the College Level Examination Program (CLEP) test for social science and history ($X_1$) and on the College Qualification Test (CQT) for verbal ($X_2$) and science ($X_3$) are given in the TestScores.csv file.
+
+    a. Test the null hypothesis $H_o: \mu=\begin{pmatrix}500&50&30\end{pmatrix}^T$ vs the alternative $H_A:\mu\neq\begin{pmatrix}500&50&30\end{pmatrix}$ at significance level $\alpha=0.05$ using simultaneous univariate t-test with Bonferonni correction. Would this multivariate hypothesis be rejected?
+
+    Using simultaneous univariate t-test with a Bonferonnie correction I would reject the Null hypothesis that the mean vector for the population is $\begin{pmatrix}500&50&30\end{pmatrix}$ in favor of the alternative. Non of the following tests have a p value > 0.05, as well non have a test statistic that is less than the corrected critical value.
+
+
+```{r}
+#| warning: false
+test_scores <- read_csv("D:/RepoMan/osu/data/TestScores.csv")
+mu <- c(500, 50, 30)
+p = ncol(test_scores)
+n = nrow(test_scores)
+```
+
+Calculate Bonferroni corrected p-value for the following univariate tests.
+
+```{r}
+alpha_star <- .05 / p
+b_crit <- qt(alpha_star / 2, df = n - 1, lower.tail = F)
+```
+
+## Test for $X_1$. 
+```{r}
+test_1 <- t.test(test_scores[, 1], mu = mu[1])
+
+test_1$p.value
+test_1$statistic
+abs(test_1$statistic) > b_crit
+```
+
+## Test for $X_2$
+
+```{r}
+test_2 <- t.test(test_scores[, 2], mu = mu[2])
+
+test_2$p.value
+test_2$statistic
+abs(test_2$statistic) > b_crit
+```
+
+## Test for $X_3$
+
+```{r}
+test_3 <- t.test(test_scores[, 3], mu = mu[3])
+
+test_3$p.value
+test_3$statistic
+abs(test_3$statistic) > b_crit
+```
+
+1. 
+    b. Test the null hypothesis vs the alternative at significance level 0.05 using Hotelling $T^2$ test. Would the multivariate hypothesis be rejected?
+
+    We can see running the Hotellings $T^2$ test, that we have a p-value of 0.4831 which is >> 0.05. I am not able to reject the null hypothesis.
+
+
+```{r}
+HotellingsT2(test_scores, t(mu))
+```
+
+2. A group of n = 66 students were given two different reading tests, Test 1 and Test 2, both before and after participating in a reading instruction program. Each student produced four test scores: pre1, pre2, post1, and post2. the pre and post-instruction scores for both tests are given in the ReadingTest.csv data file.
+
+    a. Is a paired test appropriate to test $\H_o:\mu_1=\mu_2$ vs $H_A:\mu_1\neq\mu_2$?
+
+    Yes because the same set of variables are measured under two different conditions, one of the conditions is the pre instruction test1/2 and the other is the post instruction test1/2
+
+```{r}
+#| echo: false
+#| warning: false
+
+read <- read_csv("D:/RepoMan/osu/data/ReadingTest.csv")
+read <- read %>% subset(select = -Subject)
+```
+
+2.  b. Test $H_o:\mu_1=\mu_2$ vs $H_o:\mu_1\neq\mu_2$ using simultaneous univariate hypothesis tests with Bonferroni correction. Based on the result of these hypothesis test, would you conclude that the reading instruction produces a difference in performance on the two tests?
+
+We can see from the bonferroni corrected p values for the following two univariate t-tests, for test 1 we have a p-value of .0027 << 0.05 and for test 2 we have a p-value of .0002 << 0.05. Because of this I reject the Null hypothesis that the true difference in means between the pairs is 0.
+
+```{r}
+read <- read %>%
+    mutate(test1_dif = PRE1 - POST1) %>%
+    mutate(test2_dif = PRE2 - POST2)
+```
+
+```{r}
+test1 <- t.test(read$PRE1, read$POST1)
+test2 <- t.test(read$PRE2, read$POST2)
+
+p_adjusted_1 <- p.adjust(test1$p.value, method = "bonferroni")
+p_adjusted_2 <- p.adjust(test2$p.value, method = "bonferroni")
+```
+
+```{r}
+p_adjusted_1
+p_adjusted_2
+```
+
+2.  c. Perform a level 0.05 test of $H_o:\mu_1=\mu_2$. Based on the result of this hypothesis test, would you conclude that the reading instruction produces a difference in performace of the two tests?
+
+    I would conclude that reading instruction produces a difference in performance of the two tests, as the p-value for the Hotelling Test is << 0.05.
+
+```{r}
+HotellingsT2(read[1:2], read[3:4])
+```
+
+2.  d. Now suppose you wanted to construct a confidence region for the difference in mean vectors. Would [1 1] be in that confidence region?
+
+For construction purposes we would want to take the point estimate of the mean vector and +/- the critical value * standard error.
+
+For out 95% confidence interval we get a lower bound of [1.57, -1.75] and an upper bound of [1.85, -1.75]
+
+```{r}
+crit <- qf(1 - 0.05, 2, 129)
+se_1 <- sd(read$test1_dif) / nrow(read)
+se_2 <- sd(read$test2_dif) / nrow(read)
+point_estimate <- colMeans(read[5:6])
+
+point_estimate + c(se_1, se_2) * crit
+point_estimate - c(se_1, se_2) * crit
+```
+
+The other side of this question could be asking what if we tested if the true population mean difference vector was [1, 1] instead of [0, 0], what would that test tell us? Based on my confidence intervale it would tell us that we would reject a null hypothesis stating that the population mean difference was [1, 1]. We can see from the following test that the p-value << 0.05 which gives us significant evidence against the null hypothesis. Confirming that our confidence region and the test produced the same results.
+
+```{r}
+HotellingsT2(read[1:2], read[3:4], mu = c(1, 1))
+```
+
+3. Researches have suggested that a change in skull size over time is evidence of the intergreeding of a resident population with immigrant populations. Samples of 30 male egyptian skulls were obrained for five different time period. For each skull measurements of four different dimensional variables were taken.
+
+    a. Compute and compare the covariance matrices for each of the five time periods. Do they seem approsimately similar? Would you be comforable assuming that the population covariance matrices are the same for these five different time periods?
+
+    I would have a hard time determining if they were appropriately similar just from looking at them, my intuition tells me that they are pretty different. The numbers are not as close as I would like them to be to say "the covariance matrix" are the "same" for each time period.
+
+
+```{r}
+#| warning: false
+skull <- read_csv("D:/RepoMan/osu/data/SkullData.csv")
+```
+
+
+```{r}
+first <- skull %>% filter(Year == -4000) %>% subset(select = -Year)
+second <- skull %>% filter(Year == -3300) %>% subset(select = -Year)
+third <- skull %>% filter(Year == -1850) %>% subset(select = -Year)
+fourth <- skull %>% filter(Year == -200) %>% subset(select = -Year)
+fifth <- skull %>% filter(Year == 150) %>% subset(select = -Year)
+
+fst_cov <- cov(first)
+sc_cov <- cov(second)
+th_cov <- cov(third)
+fr_cov <- cov(fourth)
+ft_cov <- cov(fifth)
+```
+
+
+```{r}
+fst_cov
+sc_cov
+th_cov
+fr_cov
+ft_cov
+```
+
+3. b. Perform separate univariate ANOVA for each of the four variables at level $\alpha^*=\frac{\alpha}{p}$ with $\alpha=0.05$. Are any of these univariate ANOVAs significant?
+
+All of the results are statistically significant, each single univariate test has a p-value < 0.05, which suggests that we reject the Null hypothesis that the skull size is the same over the years in each case.
+
+## Univariate Test for MB
+```{r}
+skull %>%
+    select(c("Year", "MB")) %>%
+    aov(MB ~ Year, data = .) %>%
+    summary()
+```
+
+## Univariate Test for BH
+
+```{r}
+skull %>%
+    select(c("Year", "BH")) %>%
+    aov(BH ~ Year, data = .) %>%
+    summary()
+```
+
+## Univariate Test for BL
+
+```{r}
+skull %>%
+    select(c("Year", "BL")) %>%
+    aov(BL ~ Year, data = .) %>%
+    summary()
+```
+
+## Univariate test for NH
+
+```{r}
+skull %>%
+    select(c("Year", "NH")) %>%
+    aov(NH ~ Year, data = .) %>%
+    summary()
+```
+
+
+3. c. Perform a level 0.05 test of the hypothesis that the population mean vectors for all of these five time periods are the same. 
+
+Based on the results of the manova test of this hypothesis I significant evidence that that the skull size changes over the years, as the p-value is < 0.05. I do believe that the skull size has been shows to change over the years, and that perhaps interbreeding could be a cause.
+
+```{r}
+response <- cbind(skull$MB, skull$BH, skull$BL, skull$NH)
+result <- manova(response ~ skull$Year)
+summary(result)
+```

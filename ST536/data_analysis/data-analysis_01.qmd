@@ -1,0 +1,324 @@
+---
+title: "536: A Comparison of Expenditure on Intercollegiate Athletics"
+author: Zahlen Zbinden
+format: pdf
+execute:
+    echo: false
+---
+
+```{r}
+#| include: false
+library(dplyr)
+library(forcats)
+library(RColorBrewer)
+library(tidyverse)
+library(viridis)
+```
+
+```{r}
+#| warning: false
+sports <- read_csv("D:/RepoMan/osu/data/sports.csv")
+```
+
+```{r}
+#| include: false
+head(sports)
+any(is.na(sports))
+nrow(sports)
+
+sports %>%
+    summarise(n_distinct(sport))
+
+sports %>%
+    summarise(n_distinct(institution))
+```
+
+
+1. What proportion of the expenditures at institutions go towards the womens' teams?
+
+We can see the distribution is approximately normal, with a mean around .45~.5, and an extreme on either end.
+
+```{r}
+expenditures <- sports %>%
+    mutate(total_expense = expense_men + expense_women) %>%
+    group_by(institution) %>%
+    summarise(
+        total_women = sum(expense_women),
+        total_expense = sum(total_expense)
+    ) %>%
+    mutate(prop_women = total_women / total_expense)
+```
+
+```{r}
+background_color <- "#3F2737"
+font_color <- "#99766E"
+fill_color <- "#94858f"
+point_color <- "#5dbb72"
+mid_yellow <- "#F9CE19"
+extreme_red <- "#EF3733"
+```
+
+
+```{r}
+#| fig.width: 7
+#| fig.height: 5
+ggplot(expenditures, aes(x = prop_women)) +
+    geom_histogram(
+        bins = 40, 
+        fill = fill_color,
+        na.rm = T
+    ) +
+    labs(
+        title = "Collegiate Athletic\nExpenditure on Women",
+        caption = "Equity in Athletics Data Analysis",
+        x = "Proportion Of Spending",
+        y = "Count"
+    ) +
+    scale_x_continuous(breaks = seq(0, 1.0, by = .125)) +
+    scale_y_continuous(breaks = seq(0, 175, by = 25)) +
+    theme(
+        text = element_text(
+            color = font_color,
+            size = 12
+        ),
+        plot.background = element_rect(fill = background_color),
+        panel.background = element_rect(fill = background_color),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_line(color = "#000000"),
+        axis.text = element_text(color = font_color),
+        axis.title.x = element_text(margin = margin(t = 15, b = 5)),
+        axis.title.y = element_text(margin = margin(r = 15)),
+        axis.ticks = element_blank(),
+        plot.title = element_text(
+            hjust = 0.4,
+            margin = margin(b = 15),
+            size = 15
+        )
+    )
+```
+
+{{< pagebreak >}}
+2. Of the sports that have both men's and women's teams. which sports have the biggest difference in the expenditure per player between men and women?
+
+We can see from the table and the graph, that Basketball, Ice Hockey, Rodeo have the biggest difference in favor of the men. Gymnastics, Rifle, and Golf have the biggest difference in favor of the women. The biggest difference overall would be either Gymanstics or Basketball, Gymnastics has on average a bigger difference in expenditure, while basketball has a much higher skew, some schools paying substantially more for their mens program, and some only paying slightly more.
+
+
+```{r}
+expenditure_difference <- sports %>%
+    select(c("sport", "expense_men", "expense_women")) %>%
+    group_by(sport) %>%
+    mutate(spending_difference = expense_women - expense_men) %>%
+    filter(expense_men != 0 & expense_women != 0) %>%
+    summarise(total_spending = sum(spending_difference))
+```
+
+```{r}
+expenditure_difference <- sports %>%
+    filter(partic_men != 0 & partic_women != 0) %>%
+    select(c(
+        "institution",
+        "sport", 
+        "expense_men", 
+        "expense_women", 
+        "partic_men", 
+        "partic_women"
+        )
+    ) %>%
+    mutate(
+        "expense_per_player_men" = expense_men / partic_men,
+        "expense_per_player_women" = expense_women / partic_women
+    ) %>%
+    mutate(
+        spending_difference = expense_per_player_men - expense_per_player_women
+    ) 
+```
+
+```{r}
+#| fig.width: 12
+#| fig.height: 15
+ggplot(
+    expenditure_difference, 
+    aes(
+        y = sport, 
+        x = spending_difference,
+        color = spending_difference
+    ),
+) +
+    geom_point(
+        size = 4, 
+        alpha = 0.4,
+        shape = 16
+    ) +
+    scale_color_gradient2(
+        low = extreme_red,
+        mid = mid_yellow,
+        high = extreme_red,
+        midpoint = 0,
+        guide = "none"
+    ) + 
+    labs(
+        title = "Spending Comparison\nBetween Men and Women in College Athletics",
+        caption = "Equity in Athletics Data Analysis",
+        y = "Sport",
+        x = "Spending Difference"
+    )+
+    theme(
+        text = element_text(
+            size = 12,
+            color = font_color
+        ),
+        plot.title = element_text(hjust = .4, size = 20),
+        plot.background = element_rect(fill = background_color),
+        panel.background = element_rect(fill = background_color),
+        legend.background = element_rect(fill = background_color),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_line(color = "#000000"),
+        axis.text = element_text(color = font_color),
+        axis.text.x = element_text(angle = 45, size = 10),
+        axis.ticks = element_blank()
+    )
+```
+
+
+```{r}
+expenditure_difference <- sports %>%
+    filter(partic_men != 0 & partic_women != 0) %>%
+    select(
+        c(
+            "institution",
+            "sport", 
+            "expense_men", 
+            "expense_women", 
+            "partic_men", 
+            "partic_women"
+        )
+    ) %>%
+    mutate(
+        "expense_per_player_men" = expense_men / partic_men,
+        "expense_per_player_women" = expense_women / partic_women
+    ) %>%
+    mutate(
+        spending_difference = expense_per_player_men - expense_per_player_women
+    ) %>%
+    select(
+        c(
+            "sport",
+            "spending_difference"
+        )
+    ) %>%
+    group_by(sport) %>%
+    summarise(
+        standard_deviation = sd(spending_difference),
+        average = mean(spending_difference)
+    )
+```
+
+
+```{r}
+#| warning: false
+#| fig.width: 12
+#| fig.height: 15
+ggplot(
+    expenditure_difference, 
+    aes(
+        y = fct_reorder(sport, average), 
+        x = average
+    )
+) +
+    geom_point(
+        size = 5, 
+        shape = 20, 
+        color = mid_yellow,
+        alpha = 0.5
+    ) +
+    geom_point(
+        aes(x = average + standard_deviation, y = sport),
+        color = mid_yellow,
+        shape = 4,
+        size = 3,
+        alpha = 0.5,
+        na.rm = TRUE
+    ) +
+    geom_point(
+        aes(x = average - standard_deviation, y = sport),
+        color = mid_yellow,
+        shape = 4,
+        size = 3,
+        alpha = 0.5,
+        na.rm = TRUE
+    ) +
+    geom_segment(
+        aes(
+            y = sport, 
+            yend = sport, 
+            x = average - standard_deviation,
+            xend = average + standard_deviation
+        ),
+        color = mid_yellow,
+        line_width = 5,
+        alpha = 0.5,
+        na.rm = TRUE
+    ) +
+    labs(
+        title = "Average and Deviation of Pay",
+        caption = "Equity in Athletics Data Analysis",
+        x = "Average +/- Deviation",
+        y = "Sport"
+    ) +
+    theme(
+        text = element_text(
+            size = 15,
+            color = font_color
+        ),
+        plot.title = element_text(hjust = .4, size = 20),
+        plot.background = element_rect(fill = background_color),
+        panel.background = element_rect(fill = background_color),
+        legend.background = element_rect(fill = background_color),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_line(color = "#000000"),
+        axis.text = element_text(color = font_color),
+        axis.text.x = element_text(angle = 45, size = 10),
+        axis.ticks = element_blank()
+    )
+```
+
+```{r}
+expenditure_difference <- sports %>%
+    filter(partic_men != 0 & partic_women != 0) %>%
+    select(
+        c(
+            "institution",
+            "sport", 
+            "expense_men", 
+            "expense_women", 
+            "partic_men", 
+            "partic_women"
+        )
+    ) %>%
+    mutate(
+        "expense_per_player_men" = expense_men / partic_men,
+        "expense_per_player_women" = expense_women / partic_women
+    ) %>%
+    mutate(
+        spending_difference = expense_per_player_men - expense_per_player_women
+    ) %>%
+    select(
+        c(
+            "sport",
+            "spending_difference"
+        )
+    ) %>%
+    group_by(sport) %>%
+    summarise(
+        standard_deviation = sd(spending_difference),
+        average_difference = mean(spending_difference)
+    ) %>%
+    arrange(average_difference)
+
+extreme <- rbind(head(expenditure_difference, 3), tail(expenditure_difference, 3))
+```
+
+
+```{r}
+extreme
+```

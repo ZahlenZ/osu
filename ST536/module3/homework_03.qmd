@@ -1,0 +1,179 @@
+---
+title: "Homework 3"
+author: Zahlen Zbinden
+format: pdf
+---
+
+```{r setup}
+#| message: false
+library(tidyverse)
+```
+
+Tasks that require an answer are bolded (inside `**` in the .qmd file). For any task that includes a question (i.e. it ends with "?"), you should also answer the question in sentence form.
+
+# Data Manipulation with dplyr
+
+These questions all use the `msleep` data set that comes with ggplot2. You can view the data by typing its name, or look at the help file to learn more about the variables inside:
+
+```{r data}
+#| eval: false
+?msleep
+```
+
+Each row of the data characterizes one mammal.
+
+## 1.
+
+**Extract the mammals from the `"Vulpes"` genus.**
+
+```{r}
+msleep %>% filter(genus == "Vulpes")
+```
+
+## 2.
+
+**Extract the `name` and `vore` columns**.
+
+```{r}
+msleep %>% select(c("name", "vore"))
+```
+
+## 3.
+
+**Which mammals sleep less than 3 hours a day?**
+
+Find the corresponding rows first, then extract the `name` and `vore` columns from the result.
+
+```{r}
+msleep %>% filter(sleep_total < 3) %>% select(c("name", "vore"))
+```
+
+## 4.
+
+**Create a scatterplot of `sleep_total` versus `bodywt` for mammals in the order `"Carnivora"`. Does there appear to be a relationship between total sleep and body weight for the carnivores in this data?**
+
+Find the corresponding rows first, then create the scatterplot with the result.
+
+```{r}
+data <- msleep %>% filter(order == "Carnivora")
+ggplot(data, aes(x = sleep_total, y = bodywt, color = genus)) +
+    geom_point(size = 3) +
+    labs(
+        title = "Sleep total vs Body Weight", 
+        subtitle = "Mammal order Carnivora", 
+        x = "Sleep total", 
+        y = "Body Weight"
+    ) +
+    theme_minimal() +
+    theme(
+        axis.title.y = element_text(angle = 0, vjust = .5)
+    )
+```
+
+## 5.
+
+**Re-write the following code to use the pipe, `|>`, rather than intermediate variables.**
+
+```{r, message = FALSE}
+grouped_msleep <- group_by(msleep, order) 
+sleep_summary <- summarise(grouped_msleep,
+    avg_sleep = mean(sleep_total, na.rm = TRUE)) 
+filter(sleep_summary, avg_sleep > 15)
+```
+
+```{r}
+msleep %>% group_by(order) %>% summarise(avg_sleep = mean(sleep_total, na.rm = T)) %>% filter(avg_sleep > 15)
+```
+## 6.
+
+**Add a column called `brain_ratio` that contains the ratio of brain weight to body weight.**
+
+```{r}
+mam_sleep <- msleep %>% mutate(brain_ratio = brainwt / bodywt)
+```
+
+## 7.
+
+**Which three animals have the highest `brain_ratio`?**
+
+To answer this question, first make a histogram of `brain_ratio`:
+
+```{r}
+ggplot(data = mam_sleep, aes(x = brain_ratio)) + 
+    geom_histogram()
+```
+
+Examine the histogram for a good numeric threshold, then use filter to find `brain_ratio`s above the threshold:
+
+```{r}
+mam_sleep %>% filter(brain_ratio > .027)
+```
+
+```{r}
+sorted <- mam_sleep %>% arrange(desc(brain_ratio))
+sorted[1:3,]
+```
+
+## 8.
+
+**Use `summarise()` to find the mean, smallest and largest values of sleep cycle lengths over all rows in the data.**
+
+```{r}
+msleep %>% summarise(
+    mean_sleep = mean(sleep_cycle, na.rm = TRUE), 
+    min_sleep = min(sleep_cycle, na.rm = T),
+    max_sleep = max(sleep_cycle, na.rm = T)
+)
+```
+
+## 9.
+
+**Find the mean, smallest and largest values of sleep cycle lengths for each order.** Order here refers to the `order` column in the data.
+
+```{r}
+sleep_cycles <- msleep %>% 
+    select(c("sleep_cycle", "order")) %>%
+    filter(complete.cases(.)) %>%
+    group_by(order) %>%
+    summarise(
+        mean_sleep = mean(sleep_cycle, na.rm = TRUE),
+        min_sleep = min(sleep_cycle, na.rm = T),
+        max_sleep = max(sleep_cycle, na.rm = T)
+    )
+```
+
+## 10.
+
+Using your result from the previous question,
+**create a scatterplot of the mean sleep cycle length by order**. 
+
+```{r}
+ggplot(
+    sleep_cycles, 
+    aes(y = fct_reorder(order, mean_sleep), x = mean_sleep)
+) +
+    geom_point(size = 3) +
+    geom_segment(
+        aes(
+            y = order, 
+            yend = order, 
+            x = 0, 
+            xend = mean_sleep
+        ),
+        linewidth = 1
+    ) +
+    labs(
+        title = "Mean sleep cycle for mammals by order",
+        y = "Order",
+        x = "Mean Sleep"
+    ) +
+    theme_minimal() +
+    theme(
+        text = element_text(size = 10),
+        axis.title.y = element_text(angle = 0),
+        axis.text.x = element_text(angle = 45),
+        plot.title = element_text(hjust = .4)
+    )
+```
+
+*(Sometimes a scatterplot like this, with a categorical variable on one axis, is called a dot chart)*.

@@ -1,0 +1,226 @@
+---
+title: "Homework 8"
+author: "Zahlen Zbinden"
+date : "11-21-2023"
+format: pdf
+---
+
+```{r setup}
+#| message: false
+library(tidyverse)
+library(nycflights13)
+```
+
+Tasks that require an answer are bolded (inside `**` in the .qmd file). For any task that includes a question (i.e. it ends with "?"), you should also answer the question in sentence form.
+
+# Logical Vectors
+
+The first part of the homework uses the `flights` and `airports` data in the nycflights13 package.
+
+## 1.
+
+(2 pts)
+
+For each of the following, filter `flights` to **find the number of flights that match the criteria**. An easy way to return just the number of flights is to pipe your resulting table into `nrow()`.
+
+a)  **Flights that flew from from JFK to PDX.**
+
+```{r}
+flights |>
+  filter(origin == "JFK" & dest == "PDX") |>
+  nrow()
+```
+
+b)  **Flights that arrive early, but have a arrival time that is greater than the scheduled arrival time.**
+
+```{r}
+flights |>
+  filter(arr_delay < 0 & (arr_time > sched_arr_time)) |>
+  nrow()
+```
+
+c)  **Flights that depart in a odd numbered month.**
+
+```{r}
+flights |>
+  filter(month %% 2 != 0) |>
+  nrow()
+```
+
+d)  **Flights that departed on Friday the 13th.** *(In 2013, Friday the 13th occurred in September and December).*
+
+```{r}
+flights |>
+  filter(month == 9 | month == 12) |>
+  filter(day == 13) |>
+  nrow()
+```
+
+## 2. How many flights a month went Hawaii?
+
+(2 pts)
+
+First, you'll need to find all the airport codes for airports in Hawaii. **Filter the `airports` data to airports where the `tz` column has the value `-10`, and then, `pull()` the `faa` column. Store the results in `hawaii_codes`.**
+
+```{r}
+hawaii_codes <- airports |>
+                  filter(tz == -10) |> 
+                  pull(faa)
+
+flights |>
+  filter(dest %in% hawaii_codes) |>
+  group_by(month) |>
+  summarise(count = n())
+```
+
+**Extract the rows in `flights` with a destination airport in the `hawaii_codes` vector. Store the result in `hawaii_flights`.** Hint: the `%in%` operator is a logical operator (like `==` or `<`) that can be used to check if a value is equal to one of the values in a vector. 
+
+```{r}
+hawaii_flights <- flights |>
+                    filter(dest %in% hawaii_codes)
+```
+
+**Summarise `hawaii_flights` by counting the number of flights in each month, and then, produce a scatterplot of the number of flights by month.**
+
+```{r}
+hawaii_flights |>
+  group_by(month) |>
+  summarise(count = n()) |>
+  mutate(month = month.name[month]) |> 
+  mutate(month = factor(month)) |>
+  mutate(
+    month = fct_relevel(
+      month,
+      c(
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      )
+    )
+  ) |>
+  ggplot(aes(x = month, y = count)) +
+    geom_point(
+      size = 3
+    ) +
+    theme(
+      axis.text.x = element_text(angle = 45)
+    )
+```
+
+## 3. What proportion of flights went to Hawaii?
+
+(2 pts)
+
+A criticism of the previous plot might be that it just shows the absolute number of flights to Hawaii, not what proportion of all flights head to Hawaii.
+
+**Rather than filtering `flights` to flights heading to Hawaii, add a column called `hawaii` to `flights` that is `TRUE` if the flight has a destination in Hawaii.**
+
+```{r}
+hawaii_flights <- flights |>
+                    mutate(
+                      hawaii = ifelse(
+                        dest %in% hawaii_codes,
+                        TRUE,
+                        FALSE
+                      )
+                    )
+
+```
+
+**Summarise `flights` by computing the `mean()` of the `hawaii` column in each month. What does this value represent?**
+
+```{r}
+plt_summary <- hawaii_flights |>
+                group_by(month) |>
+                mutate(month = month.name[month]) |> 
+                mutate(month = factor(month)) |>
+                mutate(
+                  month = fct_relevel(
+                    month,
+                    c(
+                      "January",
+                      "February",
+                      "March",
+                      "April",
+                      "May",
+                      "June",
+                      "July",
+                      "August",
+                      "September",
+                      "October",
+                      "November",
+                      "December"
+                    )
+                  )
+                ) |>
+                summarise(hawaii_prop = mean(hawaii))
+```
+
+```{r}
+
+```
+**Create a scatterplot of the `mean()` of the `hawaii` column by month. Does it tell a different story to your previous plot?**
+
+Yes this tells a much different story, as we can see the number of flights to hawaii in proportion to all other flights is decreasing, as opposed to the previous plot that just made it look like the flights to hawaii were pretty stagnant in level.
+
+```{r}
+plt_summary |>
+  ggplot(aes(x = month, y = hawaii_prop)) +
+    geom_point(size = 3) +
+    labs(
+      title = "Proportion of Overall Flights to Hawaii",
+      x = "Month",
+      y = "Ratio"
+    ) +
+    theme(
+      axis.text.x = element_text(angle = 45)
+    )
+```
+
+# Lists
+
+## 4.
+
+(2 pts)
+
+You saw that tibbles are also considered lists, so this means you can use the same subsetting tools (`[`, `[[`, `$`) on them as you can on lists.
+
+**Extract the 1st element of `starwars` with `[`**.
+
+```{r}
+starwars[1]
+```
+
+**Extract the 1st element of `starwars` with `[[`**.
+
+```{r}
+starwars[[1]]
+```
+
+**Extract the 1st element of `starwars` with `$`**. (You'll have to figure out what this element is called to use `$`).
+
+```{r}
+starwars$name
+```
+
+**Compare the subsetting above to the tidyverse tools you know. Which correspond to `select()` and which to `pull()`?**
+
+starwars[1] and select work the same by returning a tibble 87X1 with all the names, starwars[[1]], starwars$name, and pull(name) all work the same by returning a list of all the names.
+
+## 5.
+
+(2 pts)
+
+Data frames are also considered lists. Read the section comparing [Tibbles vs. data.frame in R for Data Science](https://r4ds.had.co.nz/tibbles.html#tibbles-vs.-data.frame). Pay close attention to the Extracting variables, and Subsetting sections.
+
+**How do data frames behave differently to tibbles in terms of extracting or subsetting variables?**
+Tibbles are more strict, they never do partial matching, and will generate a warning if the column you are trying to access does not exist.

@@ -1,0 +1,123 @@
+---
+author: "Zahlen Zbinden"
+title: "Module 8 R Activity"
+date: "11-27-2023"
+format: pdf
+---
+### Errors encountered
+
+When trying to plot the dendrogram objects there is an error that occurs when trying to add labels, I can't track down what is causing the error, nor find a way to fix it, it happens when following the example from the Activity as well.
+
+```{r setup, include = FALSE}
+library(tidyverse)
+library(mclust)
+```
+
+1. Read in the auto dataset and display the first six rows of the dataset.
+
+```{r}
+auto82 <- read_csv("D:/RepoMan/osu/data/Auto82MPGData.csv")
+head(auto82, 6)
+```
+
+2. Make a pairs plot of the 6 variables in the auto82 data set. Based on these plots, does it look like there are obvious clusters among these different car models?
+
+There does appear to be some clustering among the car models, as we can see in the plots that the points in some of the pairs are grouped up, for example displacement vs horsepower.
+
+```{r}
+pairs(auto82[1:6])
+```
+
+3. Perform heirarchical clustering using Euclidean distance on the unstandardized data, with complete linkage. Plot the resulting dendrogram with the car model names as labels. How many clusters would you say there are based on this dendrogram?
+
+It looks like there are 4 major clusters.
+
+```{r}
+auto_dist <- dist(auto82[,-7]) # calculates euclidean distance between the rows
+auto_hcEuc <- hclust(auto_dist, method = "complete")
+# There is an error I can't figure out when trying to set the labels
+# plot(auto_hcEuc, sub = "", main = "Complete Linkage", labels = auto82[, 7])
+plot(auto_hcEuc, sub = "", main = "Complete Linkage")
+```
+
+4. Perform the clustering using euclidean distance on the standardized data, with complete linkage. Does this dendrogram differ substantially from the unstandardized version?
+
+Yes this dendrogram is completely different than the unstandardized version.
+
+```{r}
+auto_scaled <- scale(auto82[,-7])
+autos_dist <- dist(auto_scaled)
+autos_hcEuc <- hclust(autos_dist, method = "complete")
+```
+
+
+```{r}
+plot(autos_hcEuc, main = "Complete Linkage", sub = "")
+```
+
+5. Perfrom the clustering on the standardized data with single linkage. Does this dendrogram differ substantially from the version with complete linkage on the standardized data?
+
+Yes this version differes substantially from the version with complete linkage.
+
+```{r}
+autos_hsEuc <- hclust(autos_dist, method = "single")
+plot(autos_hsEuc, main = "Single Linkage", sub = "")
+```
+
+6. Cut the dendrogram based on the unstandardized data with euclidean distance complete linkage to produce 4 clusters. Are there any obvious patterns in these 4 clusters?
+
+Yes there are some obvious patterns, especially with anything compared to weight.
+
+```{r}
+pairs(auto82[, -7], col = cutree(auto_hcEuc, k = 4) + 1)
+```
+
+7. Perform k-means clustering on the auto82 data to cluster the data into 4 clusters. Print the membership for each of the resulting clusters (note that your results may differ if you run this again, because of the random starts in the k means-algorithm) 
+
+```{r}
+auto_km4 <- kmeans(auto82[, -7], centers = 4, nstart = 10)
+```
+
+```{r}
+auto82[auto_km4$clus == 1, 7]
+auto82[auto_km4$clus == 2, 7]
+auto82[auto_km4$clus == 3, 7]
+auto82[auto_km4$clus == 4, 7]
+```
+
+8. Make a table to compare the 4-cluster k-means clustering solution to the 4-cluster result from hierarchical clustering of the unstandardized data with Euclidean distance, complete linkage.
+
+```{r}
+table(auto_km4$clus, cutree(auto_hcEuc, k = 4))
+```
+
+9. Produce a pairs plot of the 6 variables for the auto82 data, with points colored based on their cluster assignment from your k-means solution.
+
+```{r}
+pairs(auto82[, -7], col = auto_km4$clus)
+```
+
+10. Run model-based clustering on the auto82 data without specifying the number of clusters. How many clusters does the BIC select as optimal for this data?
+
+This is set by the G argument and can be called from the object as object$G. This model chose 2 clusters.
+
+```{r}
+auto_mc <- Mclust(auto82[,-7])
+```
+
+```{r}
+auto_mc$G
+```
+
+11. Run model-based clustering specifying 4 clusters, how does the 4-cluster model-based clustering solution compare to the 4-cluster k-means clustering solution?
+
+They are fairly different, as we can see from the table, the groups that are being assigned by the model-based do not align with the groups being assigned by the k-means clustering solution.
+
+```{r}
+auto_mc4 <- Mclust(auto82[, -7], G = 4)
+```
+
+
+```{r}
+table(auto_mc4$classification, auto_km4$clus)
+```

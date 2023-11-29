@@ -1,0 +1,10 @@
+---
+title: "536: Snow in the Cascades"
+author: Your Name Here
+format: pdf
+---
+
+```{r}
+#| include: false
+library(tidyverse)
+```
