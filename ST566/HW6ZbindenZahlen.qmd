@@ -1,0 +1,633 @@
+---
+title: "Homework 6"
+author: "Zahlen Zbinden"
+date: "2-19-2024"
+format: "pdf"
+---
+
+
+```{r, setup, include = FALSE}
+library(TSA)
+library(ggplot2)
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(gridExtra)
+library(ggthemes)
+library(ggfortify)
+```
+
+
+```{r}
+data(electricity)
+```
+
+a. Display the plots of both the original series and the log transformations of the series. Argue that taking log is an appropriate transformation.
+
+
+```{r}
+# Electricity TS object plot
+electricity |>
+  autoplot() +
+    labs(
+      title = "US Electricity Generation",
+      y = "Millions of KW Hours",
+      x = "Date"
+    )
+```
+
+```{r}
+# Log(electriciy) ts plot
+electricity |>
+  log() |>
+  autoplot() +
+    labs(
+      title = "US Electricity Generation",
+      y = "Log Millions of KW Hours",
+      x = "Date"
+    )
+```
+
+We can see from the preceding plots that the difference between the log transformation and the original dataset is that the log transformation shows less variablity as time increases. This allows us to say that the log transformation will be a better dataset to build our models of off instead of the un-transformed dataset.
+
+b. Fit a linear trend to the logarithm of the electricity values.
+
+```{r}
+start_date <- as.Date("1973-01-01")
+end_date <- as.Date("2005-12-31")
+electricity |>
+  log() |>
+  as_tibble() |>
+  mutate(time = seq(
+    start_date,
+    end_date,
+    by = "month"
+  )) |>
+  ggplot(
+    aes(x = time, y = electricity)
+  ) +
+    geom_point() +
+    geom_line() +
+    geom_smooth(
+      method = "lm",
+    ) +
+    labs(
+      title = "US Monthly Electricity Generation",
+      subtitle = "Fit with Linear Trend",
+      y = "Log Millions of KW Hours",
+      x = "Date"
+    )
+```
+
+
+```{r}
+# Fit a linear model
+log_electricity  <- log(electricity)
+time_electricity <- time(electricity)
+fit_trend_electricity <- lm(
+  log_electricity ~ time_electricity
+)
+electricity_trend <- ts(
+  fit_trend_electricity$fitted.values,
+  start = c(1973, 1),
+  deltat = 1/12
+)
+```
+
+
+c) Remove the linear trend and estimate the seasonal components.
+
+```{r}
+# Remove linear trend
+res_electricity <- fit_trend_electricity$residuals |>
+  ts(
+    start = c(1973, 1),
+    deltat = 1/12
+  )
+
+```
+
+```{r}
+# Seasonality
+month_electricity <- factor(cycle(res_electricity))
+fit_season <- lm(res_electricity ~ month_electricity)
+season_electricity <- ts(
+  fit_season$fitted,
+  start = c(1973, 1),
+  deltat = 1/12
+)
+```
+
+d) Plot estimated trend, seasonality and the residual series. Does the residual series appear to be stationary?
+
+
+```{r}
+# Plot the fitted trend model
+electricity |>
+  log() |>
+  as_tibble() |>
+  mutate(
+    date = seq(
+      start_date,
+      end_date,
+      by = "month"
+    )
+  ) |>
+  ggplot(
+    aes(x = date, y = electricity)
+  ) +
+    geom_smooth(
+      method = "lm",
+      fill = "blue",
+      col = "red", 
+      linewidth = 2
+    ) +
+    labs(
+      title = "Electricity Trend",
+      y = "Trend",
+      x = "Date"
+    )
+```
+
+
+
+```{r}
+# Plot the estimated seasonality
+season_electricity |>
+  as_tibble() |>
+  mutate(
+    date = seq(
+      start_date,
+      end_date,
+      by = "month"
+    )
+  ) |>
+  ggplot(
+    aes(x = date, y = season_electricity)
+  ) +
+    geom_line() +
+    labs(
+      title = "Electricity Seaonality",
+      y = "Seasonality",
+      x = "Date"
+    )
+```
+
+```{r}
+# plot the residual series
+rand_electricity <- ts(
+  res_electricity - season_electricity,
+  start = c(1973, 1),
+  frequency = 1/12
+)
+
+rand_electricity |>
+  as_tibble() |>
+  mutate(
+    date = seq(
+      start_date,
+      end_date,
+      by = "month"
+    )
+  ) |>
+  ggplot(
+    aes(x = date, y = res_electricity)
+  ) +
+    geom_point() +
+    geom_line() +
+    geom_hline(
+      yintercept = 0,
+      col = "red",
+      linewidth = 2
+      ) +
+      labs(
+        title = "Fitted Electricity Residuals",
+        y = "Residuals",
+        x = "Date"
+      )
+```
+
+The residual series does appear to be stationary. The Variance for time chunks looks to be equal although it may appear that the variance increases over time, we can see that in chunks of 5 - 10 years that the variance is the same in each of the chunks.
+
+
+e. Fit an ARMA model to the residual series. When fitting ARMA model, please clearly explain how you chose the orders for p, q.
+
+
+```{r}
+acf_rand <- acf(
+  c(rand_electricity),
+  plot = FALSE,
+  lag.max = 36
+)
+
+pacf_rand <- pacf(
+  c(rand_electricity),
+  plot = FALSE,
+  lag.max = 40
+)
+```
+
+```{r}
+# standard error for acf and pacf
+acf_ci = qnorm((1 - .05)/2)/sqrt(length(acf_rand$n.used))
+
+pacf_ci = qnorm((1 - .05)/2)/sqrt(length(pacf_rand$n.used))
+
+```
+
+
+```{r}
+# plot the acf for residuals
+acf_rand$acf |>
+  as_tibble() |>
+  mutate(index = 1:length(acf_rand$acf)) |>
+  ggplot(
+    aes(x = index, y = V1)
+  ) +
+    geom_point(
+      size = 2.5
+    ) +
+    geom_hline(
+      yintercept = acf_ci * 2,
+      linetype = 3,
+      col = "darkblue",
+      linewidth = 2
+    ) +
+    geom_hline(
+      yintercept = -acf_ci * 2,
+      linetype = 3,
+      col = "darkblue",
+      linewidth = 2
+    ) +
+    geom_segment(
+      aes(
+        x = index,
+        xend = index,
+        y = 0,
+        yend = V1
+      ),
+      linewidth = 1
+    ) +
+    labs(
+      title = "ACF of the Residual Series",
+      y = "ACF",
+      x = "Lag"
+    )
+```
+
+
+```{r}
+pacf_rand$acf |>
+  as_tibble() |>
+  mutate(
+    index = 1:length(pacf_rand$acf)
+  ) |>
+  ggplot(
+    aes(x = index, y = V1)
+  ) +
+    geom_point(
+      size = 2.5
+    ) + 
+    geom_hline(
+      yintercept = 2 * pacf_ci,
+      linetype = 3,
+      col = "darkblue",
+      linewidth = 2
+    ) +
+    geom_hline(
+      yintercept = -2 * pacf_ci,
+      linetype = 3,
+      col = "darkblue",
+      linewidth = 2
+    ) +
+    geom_segment(
+      aes(
+        x = index,
+        xend = index,
+        y = 0,
+        yend = V1
+      ),
+      linewidth = 1.5
+    ) +
+    labs(
+      title = "PACF of the Residual Series",
+      y = "PACF",
+      x = "Lag"
+    )
+```
+
+We can see from the ACF plot that the residual series ACF shows a tail-off patern which could be an indication that this series is either an MA(q) or ARMA(p,q) model. However from the PACF we can see that there are lags above the confidence interval at 1, 9, 10, and 14. However only the lag at 1 is very significant. This suggests that an AR(1), AR(14) model. We will build a few different models that we can use in our diagnosis to determine which has the best fit.
+
+f. Perform model diagnosis and determine if your model provides a reasonable fit to the data.
+
+```{r}
+#AR(1) model
+fit_ar1 <- arima(
+  rand_electricity,
+  order = c(p = 1, d = 0, q = 0),
+  method = "ML",
+  include.mean = FALSE
+)
+fit_ar1
+```
+
+We can see from the fitted AR(1) model that we have an AIC of -1768.04, with a log liklihood of 885.02.
+
+```{r}
+# AR(14) model
+fit_ar14 <- arima(
+  rand_electricity,
+  order = c(p = 14, d = 0, q = 0),
+  method = "ML",
+  include.mean = FALSE
+)
+fit_ar14
+```
+
+We can see from the fitted AR(14) model that we have an AIC of -171, with a log liklihood of 912.4
+
+Lets see if increasing the order of the AR model any further provides a better fit.
+
+```{r}
+# AR(16) model
+fit_ar16 <- arima(
+  rand_electricity,
+  order = c(p = 16, d = 0, q = 0),
+  method = "ML",
+  include.mean = FALSE
+)
+fit_ar16
+```
+
+We can see that in the AR(16) model we have an AIC of -17, and a log likelihood of 915.85.
+
+This would lead us to consider the AR(16) model as the appropriate choice for this data, however they are very similar and the more simple model of the AR(14) may be a better choice, when we examine the ACF and PACF plots of the models we will have a better idea of which is going to be our final choice. If the ACF and the PACF of the two models are statistically the same (not able to reject the null hypothesis that the ACF values or the PACF values are significantly different from 0) than we will choose the simplier model AR(14)
+
+We can see the model coeffiecients in the printout above.
+
+Another diagnosis we will check is the residuals of the AR(14) and AR(16) model. We are looking for residuals that are not auto-correlated. We want to residuals to be i.i.d., if the residuals were correlated it would be a violation of our assumptions and the model would not be a good fit to create a descriptive model of the data.
+
+```{r}
+acf_res_ar14 <- acf(
+  fit_ar14$residuals,
+  plot = FALSE
+)
+```
+
+```{r}
+pacf_res_ar14 <- pacf(
+  fit_ar14$residuals,
+  plot = FALSE
+)
+```
+
+```{r}
+acf_res_ar16 <- acf(
+  fit_ar16$residuals,
+  plot = FALSE
+)
+```
+
+```{r}
+pacf_res_ar16 <- pacf(
+  fit_ar16$residuals,
+  plot = FALSE
+)
+```
+
+```{r}
+acf_ci = qnorm((1 - .05) / 2) / sqrt(length(acf_res_ar14$n.used))
+
+pacf_ci = qnorm((1 - .05) / 2) / sqrt(length(acf_res_ar16$n.used))
+```
+
+
+```{r}
+acf_res_ar14$acf |>
+  as_tibble() |>
+  mutate(index = 1:length(acf_res_ar14$acf)) |>
+  ggplot(
+    aes(x = index, y = V1)
+  ) +
+    geom_point(size = 2) +
+    geom_segment(
+      aes(
+        x = index,
+        xend = index,
+        y = 0,
+        yend = V1
+      )
+    ) +
+    geom_hline(
+      yintercept = 2 * acf_ci,
+      col = "darkblue",
+      linetype = "dashed"
+    ) +
+    geom_hline(
+      yintercept = -2 * acf_ci,
+      col = "darkblue",
+      linetype = "dashed"
+    ) +
+    labs(
+      title = "ACF for residuals",
+      subtitle = "AR(14)",
+      y = "ACF",
+      x = "Lag"
+    )
+```
+
+```{r}
+pacf_res_ar14$acf |>
+  as_tibble() |>
+  mutate(
+    index = 1:length(pacf_res_ar14$acf) 
+  ) |>
+  ggplot(
+    aes(x = index, y = V1)
+  ) +
+    geom_point(size = 2) +
+    geom_segment(
+      aes(
+        x = index,
+        xend = index,
+        y = 0, 
+        yend = V1
+      )
+    ) +
+    geom_hline(yintercept = 2 * pacf_ci) +
+    geom_hline(yintercept = -2 * pacf_ci) +
+    labs(
+      title = "PACF of Residuals",
+      subtitle = "AR(14)",
+      y = "PACF",
+      x = "Lag"
+    )
+```
+
+```{r}
+acf_res_ar16$acf |>
+  as_tibble() |>
+  mutate(index = 1:length(acf_res_ar16$acf)) |>
+  ggplot(
+    aes(x = index, y = V1)
+  ) +
+    geom_point(size  = 2) +
+    geom_segment(
+      aes(
+        x = index,
+        xend = index,
+        y = 0,
+        yend = V1
+      )
+    ) +
+    geom_hline(
+      yintercept = 2 * acf_ci,
+      col = "darkblue",
+      linetype = "dashed"
+    ) +
+    geom_hline(
+      yintercept = -2 * acf_ci,
+      col = "darkblue",
+      linetype = "dashed"
+    ) +
+    labs(
+      title = "ACF for residuals",
+      subtitle = "AR(16)",
+      y = "ACF",
+      x = "Lag"
+    )
+```
+
+```{r}
+pacf_res_ar16$acf |>
+  as_tibble() |>
+  mutate(
+    index = 1:length(pacf_res_ar16$acf) 
+  ) |>
+  ggplot(
+    aes(x = index, y = V1)
+  ) +
+    geom_point(size = 2) +
+    geom_segment(
+      aes(
+        x = index,
+        xend = index,
+        y = 0, 
+        yend = V1
+      )
+    ) +
+    geom_hline(yintercept = 2 * pacf_ci) +
+    geom_hline(yintercept = -2 * pacf_ci) +
+    labs(
+      title = "PACF for Residuals",
+      subtitle = "AR(16)",
+      y = "PACF",
+      x = "Lag"
+    )
+```
+
+We conclude from the plots above that for the AR(14) and AR(16) model that there is no evidence of nonzerio autocorrelation in the residuals.
+
+```{r}
+par(mar=c(1,1,1,1))
+tsdiag(fit_ar14)
+```
+
+We can see from the p-values of the Ljung-Box test that we do not have statistically significant evidence against independence of the error terms in this model.
+
+```{r}
+#QQ
+qqnorm(fit_ar14$residuals)
+qqline(fit_ar14$residuals)
+```
+
+From the quantile-quantile plots we also do not see any cause for concern
+
+g. Using the estimated ARMA model, forecast the next 10 values of the transformed series.
+
+```{r}
+# predict the random part
+
+pred_rand <- predict(fit_ar14, n.ahead = 10)
+
+new_time <- seq(2006, by = 1/12, length = 10)
+```
+
+```{r}
+# predict the trend
+
+fit_trend_electricity <- lm(
+  electricity ~ time_electricity,
+  data = data.frame(
+    log_electricity,
+    time_electricity
+  )
+)
+pred_trend <- predict(
+  fit_trend_electricity,
+  newdata = data.frame(
+    time_electricity = new_time
+  )
+)
+```
+
+```{r}
+# predict seasonality
+pred_season <- fit_season$fitted[1:10]
+```
+
+```{r}
+# sum prediction
+
+predictions <- ts(
+  pred_rand$pred + pred_trend + pred_season,
+  start = c(2006, 1),
+  deltat = 1/12
+)
+```
+
+
+```{r}
+start_date_predictions <- as.Date("2006-01-01")
+end_date_predictions <- as.Date("2006-10-31")
+predictions_plot <- predictions |>
+                      as_tibble() |>
+                      mutate(
+                        date = seq(
+                          start_date_predictions,
+                          end_date_predictions,
+                          by = "month"
+                        ),
+                        dataset = "predictions"
+                      ) |>
+                      rename("electricity" = x)
+
+electricity_plot <- electricity |>
+                      log() |>
+                      as_tibble() |>
+                      mutate(
+                        date = seq(
+                          start_date,
+                          end_date,
+                          by = "month"
+                        ),
+                        dataset = "original"
+                      )
+plot_data = rbind(
+  electricity_plot,
+  predictions_plot
+)
+```
+
+
+```{r}
+plot_data |>
+  ggplot(aes(x = date, y = electricity)) +
+    geom_line(aes(color = dataset)) +
+    scale_color_hue(direction = -1)
+```
+
+
+h. How would you obtain forecasts for the original time series?
+
+To obtain forcasts of the original series one would just need to reverse the log transoformation of the new predictions. This can be done through exponentiation with the exp() function on the prediction data.

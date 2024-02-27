@@ -1,0 +1,136 @@
+---
+title: "Homework 3"
+author: "Zahlen Zbinden"
+date: "1-29-24"
+format: "pdf"
+---
+
+```{r}
+library(ggplot2)
+```
+
+# Problem 1
+
+a)
+$$
+Y_t = t + W_t 
+$$
+$$
+Y_s = s + W_s
+$$
+$$
+cov(Y_t, Y_s) = E[(Y_s - \mu_s)(Y_t - \mu_t)] 
+$$
+$$
+E[(Y_s)(Y_t)]
+$$
+$$
+E[Y_s] * E[Y_t]
+$$
+
+Because X is from N(0,1) both of the expected values are 0, such that the autocorrelation is 0. The variance is also 0, as the expected values are all 0, with a mean of 0. 
+
+b) The same argument from above may be used, as $W_t$ is from a random normal population with mean 0 and variance of 1.
+
+# Problem 2
+
+a) $Y_t$ is weakly stationary as nothing is changing over time it is a flat line, every point has the same mean
+
+b) Autocorrelation is the expected value at one time step by the expected value at another time step and doing this for each of the data points. We know that at each data point the time series takes on the same value, such that the correlation will always be the expected value multiplied by 2, since X is a constant in Time that we the expected value will always be 0, which leads the autocorrelation to be zero as well.
+$$
+\rho(h) = Cor(Y_t, Y_{t+h}) = E[Y_t] * 2
+$$
+
+
+c)
+```{r}
+x <- rep(rnorm(n = 1), times = 100)
+t <- 1:100
+t_data <- data.frame(column1 = x, column2 = t)
+```
+
+
+```{r}
+ggplot(data = t_data, aes(x = t, y = x)) +
+  geom_point()
+```
+
+# Problem 3
+
+a) With a N(0,1) distribution the mean function is 0. This is the same for a uniform distribution.
+
+$$
+\rho(h) = \frac{1}{n} \sum_{t = 1}^{n - h}(y_{t+h} - \bar{y})(y_t - \bar{y})
+$$
+$$
+\rho(h) = \frac{1}{n} \sum_{t = 1}^{n - h}(y_{t+h})(y_t)
+$$
+
+We can also see that autocovariance is just average of the covariance, which leads us to
+
+$$
+\rho(h) = cov(y_t, y_{t+h}) = E[(y_{t+h} - \mu_{t+h})(y_{t}-\mu_t)]
+$$
+
+We know that the mean value is 0 and the expected values for this distribution are also 0, which leads us to the autocorrlation being 0.
+
+For the uniform distribution we have the same expected values, and the same auto covariance functions, this leads us to the autocorrelation also being 0 with the same equation as above. 
+
+For the auto correlation of $Y_t$ and $W_t$ is the ratio of the Cov at t and t+h, which will be zero as the expected value for both of these is zero at all points.
+
+# Problem 4
+
+We can see this is a MA(1) model with $\beta = \theta$
+
+At lag of 2, and 3 ACF is 0. For lag = 1 we have for $\beta = 3$
+
+$$
+\frac{\beta}{1+\beta^2}
+$$
+
+for $\beta=\frac{1}{3}$ we have
+
+$$
+\frac{\beta}{1+\frac{1}{\beta^2}} = \frac{\beta}{1+\beta^2}
+$$
+
+We can see that both models have the same exact ACF, the implications of this are that the previous day affects the follwing day exactly the same if the coefficient is an inverse.
+
+
+# Problem 5
+
+```{r}
+ma1 <- arima.sim(n = 100, model = list(ma = .5))
+```
+
+```{r}
+plot(acf(ma1))
+```
+
+c. The sample ACF does show the property of cutoff, as the lag is only significant at 1, all other days the lag is insignificant.
+
+d. 
+
+```{r}
+ma1 <- arima.sim(n = 500, model = list(ma = .5))
+plot(acf(ma1))
+```
+
+The sample ACF does show the property of cutoff, as the lag is only significant at 1, all o8ther days the lag is insignificant.
+
+e.
+
+```{r}
+ar1 <- arima.sim(n = 100, model = list(ar = .5))
+plot(acf(ar1))
+```
+
+The ACF of AR1 has a much stronger affect from lag 1 to 5 than the ma1 model, with significant values from 1 to 5, but then has the property of cutoff starting at day 6.
+
+
+```{r}
+ar1 <- arima.sim(n = 500, model = list(ar = .5))
+plot(acf(ar1))
+```
+
+We see the same affects in this model with the sample size being 500 as we did in the previous example, except that the ACF has a much steeper decline from days 1 - 5, but still has the cutoff at day 5.

@@ -111,4 +111,4 @@ I prefer the maximum likelhood factor analysis method for this data, as it seems
 
 f. Are the factors resulting from the two methods similar for the m = 2 and m = 3 models. 
 
-Yes they are similar, they utilize many of the same variable in the loadings, and showed similar correlations, however the maximum likelyhood factor analysis methods residual matrix is much smaller in magnitude, which would seem to suggest that model is slightly better, although not immediately discernable from the loadings, the resulting R2 matrix does speak to the second method being more closely alligned with the population.
+Yes they are similar, they utilize many of the same variable in the loadings, and showed similar correlations, however the maximum likelyhood factor analysis methods residual matrix is much smaller in magnitude, which would seem to suggest that model is slightly better, although not immediately discernable from the loadings, the resulting R2 matrix does speak to the second method being more closely alligned with the population.=

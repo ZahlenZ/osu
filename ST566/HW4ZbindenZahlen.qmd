@@ -1,0 +1,522 @@
+---
+author: "Zahlen Zbinden"
+title: "Homework 4"
+date: "2-25-24"
+format: "pdf"
+---
+
+```{r}
+library(ggplot2)
+```
+
+1a) $Y_t = .8Y_{t-1} -.15Y_{t-2} + W_t - .3W_{t-2}$
+
+We suspect this may be an ARMA(2,1) model. 
+
+First we will check for parameter redundancy.
+
+$\phi(z) = 1 - .8z + .15z^2$
+with
+$z = (2, 3\frac{1}{3})$
+
+we also have 
+
+$\theta(z) = 1 - .3z$
+
+which gives us 
+
+$z = 3\frac{1}{3}$
+
+This shows that the two characteristic polynomials have shared factors and as such this is not an ARMA(2,1) model, this is just a  white noise model, as there is paramter redundancy. 
+
+with $\phi > 1$, this model is stationary as we would expect since it is just white noise.
+
+with $\theta >1$, this model is invertable.
+
+1b) $Y_t = Y_{t-1} -.5Y_{t-2} + W_t - W_{t-1}$
+
+We suspect this may be an ARMA(2,1) model.
+
+First we will check for parameter redundancy.
+
+$\phi(z) = 1 - z +.5z^2$
+with 
+$z = \frac{1}{2} + \frac{i}{2}$
+or 
+$z = \frac{1}{2} - \frac{i}{2}$
+
+we also have 
+$\theta(z) = 1 - \theta$
+with 
+$z = 1$
+
+This shows taht the two characteristic polynomials have no shared factors and as such this is indeed an ARMA(2,1) model.
+
+with $\phi < 1$, this model is not stationary.
+
+with $\theta = 1$, this model is not invertable.
+
+2a) $Y_t = W_t + .5W_{t-1} + .4W_{t-2}$
+
+Plot the True autocorrelation function (ACF)
+
+Length of the series
+```{r}
+# Simulated series length
+n <- 100
+# MA coefficients and simulated data
+theta = c(.5, .4)
+MA2 <- arima.sim(n = n, model = list(ma = theta))
+# True ACF
+MA2_acf <- ARMAacf(ma = theta, lag.max = 30, pacf = FALSE)
+# TRUE pacf
+MA2_pacf <- ARMAacf(ma = theta, lag.max = 30, pacf = TRUE)
+```
+
+```{r}
+# Plot the true ACF
+ggplot(data = data.frame(x = 0:30, y = MA2_acf)) +
+  geom_point(
+    aes(x = x, y = y),
+  ) +
+  geom_segment(
+    aes(
+      x = x, 
+      xend = x,
+      y = 0,
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True ACF",
+    y = "ACF",
+    x = "Lag"
+  )
+```
+
+We can see from the true ACF that there are zero lags after 2, this suggests this may be an MA(2) model.
+
+```{r}
+# Plot the true PACF
+ggplot(data = data.frame(x = 1:30, y = MA2_pacf)) +
+  geom_point(
+    aes(x = x, y = y)
+  ) +
+  geom_segment(
+    aes(
+      x = x,
+      xend = x,
+      y = 0, 
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True PACF",
+    y = "PACF",
+    x = "Lag"
+  )
+```
+
+We can see from the true PACF that the model tails off, this leads us to the conclusion that this is indeed a MA(2) model, or an ARMA(0, 2) model.
+
+2b) $Y_t = W_t + 1.2W_{t-1} - .7W_{t-2}$
+
+
+```{r}
+# MA coefficients
+theta = c(1.2, -.7)
+# True ACF
+MA2_acf <- ARMAacf(ma = theta, lag.max = 30, pacf = FALSE)
+# TRUE pacf
+MA2_pacf <- ARMAacf(ma = theta, lag.max = 30, pacf = TRUE)
+```
+
+```{r}
+# Plot the true ACF
+ggplot(data = data.frame(x = 0:30, y = MA2_acf)) +
+  geom_point(
+    aes(x = x, y = y),
+  ) +
+  geom_segment(
+    aes(
+      x = x, 
+      xend = x,
+      y = 0,
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True ACF",
+    y = "ACF",
+    x = "Lag"
+  )
+```
+
+We can see from the true ACF plot that there are zero lags after after 2, this leads us to believe this is an MA(2) model
+
+```{r}
+# Plot the true PACF
+ggplot(data = data.frame(x = 1:30, y = MA2_pacf)) +
+  geom_point(
+    aes(x = x, y = y)
+  ) +
+  geom_segment(
+    aes(
+      x = x,
+      xend = x,
+      y = 0, 
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True PACF",
+    y = "PACF",
+    x = "Lag"
+  )
+```
+
+We can see from the true ACF plot that that there is tailoff, which leads us to believe that this is actually an ARMA model, and there is some Autoregressive features that are present.
+
+2c) $Y_t = .6Y_{t-1} + .3Y_{t-2} + W_t$
+
+```{r}
+# MA coefficients
+theta = c()
+# AR coefficients
+phi = c(.6, .3)
+# True ACF
+AR2_acf <- ARMAacf(ar = phi, lag.max = 30, pacf = FALSE)
+# TRUE pacf
+AR2_pacf <- ARMAacf(ar = phi, lag.max = 30, pacf = TRUE)
+```
+
+
+```{r}
+# Plot the true ACF
+ggplot(data = data.frame(x = 0:30, y = AR2_acf)) +
+  geom_point(
+    aes(x = x, y = y),
+  ) +
+  geom_segment(
+    aes(
+      x = x, 
+      xend = x,
+      y = 0,
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True ACF",
+    y = "ACF",
+    x = "Lag"
+  )
+```
+
+We can see from the plot that there is tailoff in the ACF plot, we are still unsure if this is from an ARMA model or an AR model at this time.
+
+```{r}
+# Plot the true PACF
+ggplot(data = data.frame(x = 1:30, y = AR2_pacf)) +
+  geom_point(
+    aes(x = x, y = y)
+  ) +
+  geom_segment(
+    aes(
+      x = x,
+      xend = x,
+      y = 0, 
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True PACF",
+    y = "PACF",
+    x = "Lag"
+  )
+```
+
+We can see there are zero lags > 2, this suggests that this model is an AR(2) model with no MA parts.
+
+2d)$Y_t = 1.2Y_{t-1} +.7Y_{t-2} + W_t$
+
+```{r}
+# MA coefficients
+theta = c()
+# AR coefficients
+phi = c(1.2, -.7)
+# True ACF
+AR2_acf <- ARMAacf(ar = phi, lag.max = 30, pacf = FALSE)
+# TRUE pacf
+AR2_pacf <- ARMAacf(ar = phi, lag.max = 30, pacf = TRUE)
+```
+
+```{r}
+# Plot the true ACF
+ggplot(data = data.frame(x = 0:30, y = AR2_acf)) +
+  geom_point(
+    aes(x = x, y = y),
+  ) +
+  geom_segment(
+    aes(
+      x = x, 
+      xend = x,
+      y = 0,
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True ACF",
+    y = "ACF",
+    x = "Lag"
+  )
+```
+
+We can see from the true ACF that this model exhibits tail off, with leads us to believe it could be either an AR or an ARMA model
+
+```{r}
+# Plot the true PACF
+ggplot(data = data.frame(x = 1:30, y = AR2_pacf)) +
+  geom_point(
+    aes(x = x, y = y)
+  ) +
+  geom_segment(
+    aes(
+      x = x,
+      xend = x,
+      y = 0, 
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True PACF",
+    y = "PACF",
+    x = "Lag"
+  )
+```
+
+We can see from the true PACF that this model cuts off at lag 2, which indicates that this model is an AR(2)
+
+2e) $Y_t = .7Y_{t-1} + W_t + .4W_{t-1}$
+
+```{r}
+# MA coefficients
+theta = c(.4)
+# AR coefficients
+phi = c(.7)
+# True ACF
+AR2_acf <- ARMAacf(ar = phi, ma = theta, lag.max = 30, pacf = FALSE)
+# TRUE pacf
+AR2_pacf <- ARMAacf(ar = phi, ma = theta, lag.max = 30, pacf = TRUE)
+```
+
+```{r}
+# Plot the true ACF
+ggplot(data = data.frame(x = 0:30, y = AR2_acf)) +
+  geom_point(
+    aes(x = x, y = y),
+  ) +
+  geom_segment(
+    aes(
+      x = x, 
+      xend = x,
+      y = 0,
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True ACF",
+    y = "ACF",
+    x = "Lag"
+  )
+```
+
+We can see there is tailoff in the ACF plot, which doesn't help us to distinguish if this is AR or ARMA.
+
+```{r}
+# Plot the true PACF
+ggplot(data = data.frame(x = 1:30, y = AR2_pacf)) +
+  geom_point(
+    aes(x = x, y = y)
+  ) +
+  geom_segment(
+    aes(
+      x = x,
+      xend = x,
+      y = 0, 
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True PACF",
+    y = "PACF",
+    x = "Lag"
+  )
+```
+
+We can see that the true PACF exhibits tail off, which leads us to the conclusion that this is an ARMA model.
+
+2f) $Y_t = .7Y_{t-1} + W_t - .4W_{t-1}$
+
+```{r}
+# MA coefficients
+theta = c(-.4)
+# AR coefficients
+phi = c(.7)
+# True ACF
+AR2_acf <- ARMAacf(ar = phi, ma = theta, lag.max = 30, pacf = FALSE)
+# TRUE pacf
+AR2_pacf <- ARMAacf(ar = phi, ma = theta, lag.max = 30, pacf = TRUE)
+```
+
+```{r}
+# Plot the true ACF
+ggplot(data = data.frame(x = 0:30, y = AR2_acf)) +
+  geom_point(
+    aes(x = x, y = y),
+  ) +
+  geom_segment(
+    aes(
+      x = x, 
+      xend = x,
+      y = 0,
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True ACF",
+    y = "ACF",
+    x = "Lag"
+  )
+```
+
+We can see from the true ACF plot that this model exhibits tail off, which suggests that it could either be an AR model or an ARMA model
+
+```{r}
+# Plot the true PACF
+ggplot(data = data.frame(x = 1:30, y = AR2_pacf)) +
+  geom_point(
+    aes(x = x, y = y)
+  ) +
+  geom_segment(
+    aes(
+      x = x,
+      xend = x,
+      y = 0, 
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True PACF",
+    y = "PACF",
+    x = "Lag"
+  )
+```
+
+We can see that this model has cutoff after lag 2, which suggests that it is an AR model, and it is the inverse of the previous model.
+
+3) Consider AR(2) $Y_t = .7Y_{t-1} - .2Y_{t-2} + W_{t}$
+
+
+```{r}
+# MA coefficients
+theta = c(-.4)
+# AR coefficients
+phi = c(.7)
+# True ACF
+AR2_acf <- ARMAacf(ar = phi, ma = theta, lag.max = 10, pacf = FALSE)
+# TRUE pacf
+AR2_pacf <- ARMAacf(ar = phi, ma = theta, lag.max = 10, pacf = TRUE)
+```
+
+```{r}
+# Plot the true ACF
+ggplot(data = data.frame(x = 0:10, y = AR2_acf)) +
+  geom_point(
+    aes(x = x, y = y),
+  ) +
+  geom_segment(
+    aes(
+      x = x, 
+      xend = x,
+      y = 0,
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True ACF",
+    y = "ACF",
+    x = "Lag"
+  )
+```
+
+```{r}
+# Plot the true PACF
+ggplot(data = data.frame(x = 1:30, y = MA2_pacf)) +
+  geom_point(
+    aes(x = x, y = y)
+  ) +
+  geom_segment(
+    aes(
+      x = x,
+      xend = x,
+      y = 0, 
+      yend = y
+    )
+  ) +
+  labs(
+    title = "True PACF",
+    y = "PACF",
+    x = "Lag"
+  )
+```
+
+b)
+
+
+```{r}
+n <- 30
+phi <- c(.7, -.2)
+AR2 <- arima.sim(n = n, model = list(ar = phi))
+```
+
+
+```{r}
+#Autocorrelation at lag 1
+sim_acf <- acf(AR2)
+sim_acf$acf[2]
+```
+
+c)
+
+```{r}
+first_lag <- numeric(1000)
+for (i in 1:1000) {
+  sim <- arima.sim(n = n, model = list(ar = phi))
+  sim_acf <- acf(sim, plot = FALSE)
+  first_lag[i] <- sim_acf$acf[2]
+}
+mean_first_lag <- mean(first_lag)
+```
+
+
+```{r}
+mean_first_lag
+```
+
+We see with the sample size of 30 the autocorrelation coeffiect does not appear to be an unbiased estimate of the true autocorrelation at lag 1.
+
+```{r}
+# increase sample size
+n <- 10000
+first_lag <- numeric(1000)
+for (i in 1:1000) {
+  sim <- arima.sim(n = n, model = list(ar = phi))
+  sim_acf <- acf(sim, plot = FALSEe)
+  first_lag[i] <- sim_acf$acf[2]
+}
+mean_first_lag <- mean(first_lag)
+mean_first_lag
+```
+
+
+

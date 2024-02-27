@@ -1,0 +1,56 @@
+---
+author: "Zahlen Zbinden"
+title: "Discussion 2 time series"
+date: "1-26-2024"
+format: "pdf"
+---
+
+```{r setup, include = FALSE}
+library(ggplot2)
+library(ggtext)
+library(RColorBrewer)
+library(tidyverse)
+library(showtext)
+library(lubridate)
+library(readxl)
+library(sysfonts)
+library(scales)
+library(TSA)
+library(lubridate)
+```  
+
+
+```{r}
+msoft <- read_csv("D:/RepoMan/osu/data/MicrosoftStock.csv")
+```
+
+```{r}
+view(msoft)
+```
+
+```{r}
+m_filter <- msoft |>
+              mutate(Date = str_sub(Date, end = -10)) |>
+              mutate(Date = mdy(Date)) |>
+              filter(Date >= "2020-01-01")
+```
+
+```{r}
+m_filter |>
+  ggplot(aes(x = Date, y = Open)) +
+    geom_point(
+      size = 2.5
+    ) +
+    geom_line(
+      linewidth = 1
+    ) +
+    labs(
+      title = "Microsoft Opening Stock Prices 2020 - 2021"
+    ) +
+    theme_minimal()
+```
+
+```{r}
+acf(m_filter)
+```
+
