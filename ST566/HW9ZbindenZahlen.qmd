@@ -1,0 +1,205 @@
+---
+author: "Zahlen Zbinden"
+title: "Homework 9"
+date: "3-9-2024"
+format: "pdf"
+---
+
+```{r}
+library(TSA)
+library(tidyverse)
+library(ggplot2)
+```
+1) consider an AR(2) model $Y_t = .5Y_{t-1} - .8Y_{t-2} + W_t$ where $W_t$ is iid N(0,1)
+
+a. simulate a series with n=100, and use periodogram to obtain sample spectral density
+
+```{r}
+n <- 100
+y1 <- arima.sim(n=n, model=list(ar=c(.5, -.8)))
+per_y1 <- periodogram(y1, log="no")
+```
+
+b. repeat a 1000 times, for each replication, save the sample spectral density
+
+```{r}
+nsim <- 1000
+spec_sim <- matrix(NA, nsim, length(per_y1$freq))
+```
+
+```{r}
+for(i in 1:nsim) {
+    y1 <- arima.sim(n=n, model=list(ar=c(.5, -.8)))
+    spec_sim[i,] <- periodogram(y1, plot=FALSE)$spec
+}
+```
+
+
+c. based on sample spectral desnsities obtained in 1000 replications, calculate the average sample density and the standard deviation for each frequency
+
+```{r}
+spec_avg <- apply(spec_sim, 2, mean)
+spec_sd <- apply(spec_sim, 2, sd)
+spec_t <- ARMAspec(model=list(ar=c(.5, -.8)), freq=per_y1$freq, plot=FALSE)
+```
+
+d. Plot the averages sample density by frequency and compare it with the true spectral density. Also plot the standard deviation by frequency
+
+```{r}
+savg_plot <- spec_avg |> 
+              as_tibble() |>
+              mutate(freq=per_y1$freq, dataset="sample")
+
+t_plot <- spec_t$spec |> 
+              as_tibble() |>
+              mutate(freq=per_y1$freq, dataset="true") |>
+              rename(value="V1")
+
+plot_data <- bind_rows(savg_plot, t_plot)
+```
+
+```{r}
+plot_data |>
+  ggplot(aes(x=freq, y=value, color=dataset)) +
+    geom_line()
+```
+
+```{r}
+spec_sd |> 
+  as_tibble() |>
+  mutate(freq=per_y1$freq) |>
+  ggplot(aes(x=per_y1$freq, y=spec_sd)) +
+    geom_line()
+```
+
+
+e. repeat a-d for sample sizes n=500 and n=1000. From the plots of average sample density and the plots of the standard deviatsion, what can you condlude about the performance of periodogram? In particular, is the periodogram consistent?
+
+#### n = 500
+```{r}
+n <- 500
+y1 <- arima.sim(n=n, model=list(ar=c(.5, -.8)))
+per_y1 <- periodogram(y1, log="no")
+nsim <- 1000
+spec_sim <- matrix(NA, nsim, length(per_y1$freq))
+for(i in 1:nsim) {
+    y1 <- arima.sim(n=n, model=list(ar=c(.5, -.8)))
+    spec_sim[i,] <- periodogram(y1, plot=FALSE)$spec
+}
+spec_avg <- apply(spec_sim, 2, mean)
+spec_sd <- apply(spec_sim, 2, sd)
+spec_t <- ARMAspec(model=list(ar=c(.5, -.8)), freq=per_y1$freq, plot=FALSE)
+```
+```{r}
+savg_plot <- spec_avg |> 
+              as_tibble() |>
+              mutate(freq=per_y1$freq, dataset="sample")
+
+t_plot <- spec_t$spec |> 
+              as_tibble() |>
+              mutate(freq=per_y1$freq, dataset="true") |>
+              rename(value="V1")
+
+plot_data <- bind_rows(savg_plot, t_plot)
+```
+
+```{r}
+plot_data |>
+  ggplot(aes(x=freq, y=value, color=dataset)) +
+    geom_line()
+```
+
+```{r}
+spec_sd |> 
+  as_tibble() |>
+  mutate(freq=per_y1$freq) |>
+  ggplot(aes(x=per_y1$freq, y=spec_sd)) +
+    geom_line()
+```
+
+
+#### n = 1000
+```{r}
+n <- 1000
+y1 <- arima.sim(n=n, model=list(ar=c(.5, -.8)))
+per_y1 <- periodogram(y1, log="no")
+nsim <- 1000
+spec_sim <- matrix(NA, nsim, length(per_y1$freq))
+for(i in 1:nsim) {
+    y1 <- arima.sim(n=n, model=list(ar=c(.5, -.8)))
+    spec_sim[i,] <- periodogram(y1, plot=FALSE)$spec
+}
+spec_avg <- apply(spec_sim, 2, mean)
+spec_sd <- apply(spec_sim, 2, sd)
+spec_t <- ARMAspec(model=list(ar=c(.5, -.8)), freq=per_y1$freq, plot=FALSE)
+```
+```{r}
+savg_plot <- spec_avg |> 
+              as_tibble() |>
+              mutate(freq=per_y1$freq, dataset="sample")
+
+t_plot <- spec_t$spec |> 
+              as_tibble() |>
+              mutate(freq=per_y1$freq, dataset="true") |>
+              rename(value="V1")
+
+plot_data <- bind_rows(savg_plot, t_plot)
+```
+
+```{r}
+plot_data |>
+  ggplot(aes(x=freq, y=value, color=dataset)) +
+    geom_line()
+```
+
+```{r}
+spec_sd |> 
+  as_tibble() |>
+  mutate(freq=per_y1$freq) |>
+  ggplot(aes(x=per_y1$freq, y=spec_sd)) +
+    geom_line()
+```
+
+The three plots are very similar for differing sample sizes. Especially the standard deviation does not decrease as the sample size increases. This indicates that the periodogram is not consistent.
+
+2) Consdier LA rainfall. Because of the skewness in series, we will use the logarithms of the raw values.
+
+```{r}
+data(larain)
+head(larain)
+log_rain <- log(larain)
+head(log_rain)
+```
+
+a. use periodogram() to produce raw periodogram for logarithms of rainfall values
+
+```{r}
+periodogram(log_rain, log="no")
+```
+
+b. Use spec() function to produce a smoothe spectral density estimate. Please make sure you tried with different span sizes. One rule of thumb choice of span size is the square root of series length
+
+#### span size = 15
+
+```{r}
+span <- 20
+spec0 <- spectrum(log_rain, spans=span, plot=TRUE, detrend=TRUE)
+```
+
+#### span size = sqrt(length(log_rain))
+
+```{r}
+span <- sqrt(length(log_rain))
+spec1 <-spectrum(log_rain, spans=span, plot=TRUE, detrend=TRUE)
+```
+
+#### span size = 5
+
+```{r}
+span <- 5
+spec2 <- spectrum(log_rain, spans=span, plot=TRUE, detrend=TRUE)
+```
+
+c. comment on the estimated spectrum
+
+The estimated spectrum shows that there is a strong seasonality in our data, as it has many peaks and troughs. This would indicate that the rainfall is not random, but rather follows a pattern. We can see at the larger spans (20) that the data has becomed to smooth, and we cannot pickout the frequencies, with the lower span (5) we can see to many peaks and variance, the span of sqrt(length(log_rain)) seems to be the best fit, as we can see the frequencies but we aren't introducing to much variance.

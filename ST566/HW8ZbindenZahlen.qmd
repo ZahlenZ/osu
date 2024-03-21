@@ -1,0 +1,97 @@
+---
+author: "Zahlen Zbinden"
+title: "Homework 8"
+format: "pdf"
+date: "2-27-2024"
+---
+
+
+```{r, setup, warning = FALSE, echo = FALSE}
+library(ggplot2)
+library(forecast)
+library(astsa)
+```
+
+1a)
+
+Steps For HW seasonal data
+1. Examine a graph of the data, determine is an additive or multiplicative season effect in the more appropriate
+2. Provide starting values for $L_1$ and $T_1$ as well as season values for the first year $I_1,I_2,...I_s$
+3. Estimate values for $\alpha,\gamma,\delta$ by minimizing $\sum e_{t}^{2}$
+4. decide whether to normalize the season indices at regular intervals by maken them sum to zEro in the additive case or have an average of one in the multiplicative  case.
+5. Choose between a fully automatic approach, and a non-automatic approach. 
+
+Decisions to be made for 2 parameter HW is choice of smoothing parameters $\alpha, \gamma$. For HW with seasonaility and trend we need to estimate the values of three quantities and choose the values of three paramters $L_t,T_t,I_t$ and $\alpha, \gamma, \delta$ respectively. AS well as seasonal values for a time period such as the first year, $I_1, I_2,.., I_s$
+
+1b) We need to provide starting values $T_1, L_1$ and values for a time period such as the first year $I_1, I_2,..., I_s$. For the two parameter version there are no starting values to provide, one just needs to make a choice of smoothing parameters $\alpha, \gamma$
+
+1c) Parameters that need to be estimated for three parameter model $\alpha, \gamma, \delta$ for the two parameter model $\alpha, \gamma$. All of these are taking $\in (0,1)$
+
+1d) There are 2 values that can be provided to the argument intial ("optimal", "simple"). 
+
+If optimal is used the intial values ore optimized along with the smoothing marameters using ets. the ets function restricts dseasonality to be a maximum period of 24, to allow hourly data but not data with a larger seasonal frequency.
+
+If simple is used the intial values are set to values obtained using simple calculations on the first few observations.
+
+2) Consider the Johnson and Johnson quarterly return data.
+
+
+```{r}
+data(jj)
+```
+
+a) Fit a seasonal ARIMA model to the Johnson and Johnson qwuarterly return data, and forecast (including prediction intervlas) the next 8 quarters
+
+```{r}
+fit_jj <- auto.arima(jj)
+```
+
+We can see the auto.arima() function has chosen a model that conforms to the specifications in the question. a SARIMA(3,1,1)(0,1,0)4 model has been chosen with coefficients ar1 = -.1712, ar2 = .1387, ar3 = -.208, and ma1 = -.6636.
+
+```{r}
+# prediction for next 8 quarters
+pred <- forecast(fit_jj, h = 8)
+```
+
+```{r}
+autoplot(pred)
+```
+
+b) Use hw() function to produce forecasts (including prediction intervals) for jj data for the next 8 quarters.
+
+First we should determine if we think a multiplicative model or an additive model would be the best fit for this data.
+
+```{r}
+plot(jj)
+```
+
+We can see from the plot that a multiplicative model may be best for our data as the variance is increasing over time.
+
+
+```{r}
+hw_jj <- hw(jj, seasonal = c("multiplicative"), h = 8)
+```
+
+
+```{r}
+autoplot(hw_jj)
+```
+
+c) Based on the forecasts obtained in a, and b. compare these two different forecasting procedures.
+
+We can see from the forecasts above that the SARIMA model forecasts data that has a much smaller prediction interval for the error, and that the HW model has a much larger PI. This isn't indicative that one model may be a better fit over the other however. We can look at the difference of approximations between the models
+
+
+```{r}
+diff <- hw_jj$mean - pred$mean
+```
+
+```{r}
+plot(diff)
+```
+
+We can see from the difference of the two series that for the most part the HW estimation was more conservative and estimated lower values than the SARIMA model.
+
+With the ease of function in the forecast package the procedures for obtaining forecasts with the holt-winters method and a SARIMA method are both pretty straight forward and easy. If we were to go with a more manual approach to fitting a SARIMA model it would take much longer and require much more investigation to produce a model and forecasts.
+
+Overall the two models are pretty comparable and it would be up to the analyst to decide which they would choose to go with, and stay true to there decision.

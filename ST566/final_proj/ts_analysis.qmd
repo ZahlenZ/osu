@@ -1,0 +1,529 @@
+---
+author: "Mai Castellano, Shannon Long, Zahlen Zbinden"
+title: "Final Project"
+date: "3-9-2024"
+format: "pdf"
+geometry: "margin=1cm"
+execute: 
+  echo: false
+---
+
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(forecast)
+library(lubridate)
+library(RColorBrewer)
+library(gt)
+```
+
+```{r}
+# set modifiable common theme for all plots
+com_theme <- function(...) {
+  theme(
+    plot.title=element_text(size=12, face="bold"),
+    axis.title=element_text(size=8, face="bold"),
+    axis.title.x=element_text(vjust=-1),
+    axis.title.y=element_text(vjust=2),
+    panel.grid.minor=element_blank(),
+    panel.background=element_rect(fill="#FFFFED"),
+    plot.background=element_rect(fill="#FFFFED")  
+  ) +
+  theme(...)
+}
+```
+
+# Introduction - Shannon Long
+
+# Analysis - Mai Casteallano
+
+### Data Wrangling
+
+```{r}
+# Load the data
+df <- read.csv("D:/RepoMan/osu/data/BTC_USD_Price_Prediction_Data.csv")
+```
+
+```{r, include=FALSE}
+# Sample data
+head(df)
+```
+
+```{r, include=FALSE}
+# Check the data types of each column in the dataframe
+str(df)
+```
+
+```{r, include=FALSE}
+# Convert to datetime object, change name formating, and remove uneeded currency column
+df <- df |>
+  mutate(date = as.Date(Date, format="%Y-%m-%d"))  |>
+  rename(
+    close="Closing.Price..USD.",
+    open_24h="X24h.Open..USD.",
+    high_24h="X24h.High..USD.",
+    low_24h="X24h.Low..USD.",
+  ) |>
+  select(-Currency)
+```
+
+```{r, include=FALSE}
+# Extract start date and end date from the dataframe
+start_date <- min(df$date)
+end_date <- max(df$date)
+```
+
+```{r, include=FALSE}
+# Confirm data manipulation
+head(df)
+```
+
+
+```{r, include=FALSE}
+# Confirm data manipulation
+str(df)
+```
+
+```{r}
+# Check descriptive statistics
+summary(df)
+```
+
+We can see from the descriptive statistics that all attributes are very similar, this indicates that we will really only need to consider one of the columsn for our analysis as they will yield similar results. Lets drop the remaining columns 
+
+```{r, include=FALSE}
+df <- df |>
+        select(date, close)
+```
+
+```{r, include=FALSE}
+# Confirm data manipulation
+head(df)
+```
+
+Lets get a look at the closing price.
+
+### Data Visualization
+
+
+```{r, fig.width=6, fig.height=3, fig.align="center"}
+# plot of closing price over time
+df |>
+  ggplot(aes(x=date, y=close)) +
+    geom_line() +
+    labs(
+      title="Bitcoin Closing Price Over Time",
+      x="Date",
+      y="Closing Price (USD)"
+    ) +
+    scale_x_date(date_labels="%Y", date_breaks="1 year") +
+    theme_minimal() +
+    com_theme()
+```
+
+
+We can see that the date goes from 2014 to 2021, and that the closing price, 24h open, 24h high, and 24h low have roughly the same descriptive statistics, we will only need to consider one of the columns for our analysis as they will yield similar results. This data does not appear to be stationary as is, as it has high volitility (non constant variance). We will need to consider transformations to make it stationary.
+
+Lets first take a look at the log transformation.
+
+```{r, fig.width=6, fig.height=3, fig.align="center"}
+df |>
+  mutate(close=log(close)) |>
+  ggplot(aes(x=date, y=close)) +
+    geom_line() +
+    labs(
+      title="Log Transformation of the Closing Price"
+    ) +
+    scale_x_date(date_labels="%Y", date_breaks="1 year") +
+    theme_minimal() +
+    com_theme()
+```
+
+This does appear to help out in making the data stationary, but we shouldn't rule out other transformations. We will also consider the first difference and the square root transformation.
+
+```{r}
+# Create differenced data frame for plotting
+log_dif_df <- diff(log(df$close)) |>
+            as_tibble() |>
+            mutate(
+              date=seq(
+                start_date + days(1),
+                end_date,
+                by="days"
+              )
+            ) |>
+            rename(close="value")
+```
+
+
+```{r, fig.width=6, fig.height=3, fig.align="center"}
+# First difference of the logged series
+log_dif_df |>
+  ggplot(aes(x=date, y=close)) +
+    geom_line() +
+    labs(
+      title="First Difference of the Logged Series"
+    ) +
+    scale_x_date(date_labels="%Y", date_breaks="1 year") +
+    theme_minimal() +
+    com_theme()
+```
+
+We can see now that the series is much more stationary, and all the trend has been removed. Next we will consider the square root transformation.
+
+```{r, fig.width=6, fig.height=3, fig.align="center"}
+# Square root transformation
+df |>
+  mutate(close=sqrt(close)) |>
+  ggplot(aes(x=date, y=close)) +
+    geom_line() +
+    labs(
+      title="Square Root Transformation of the Closing Price"
+    ) +
+    scale_x_date(date_labels="%Y", date_breaks="1 year") +
+    theme_minimal() +
+    com_theme()
+```
+
+At first glance this doesn't appear to be any better then the log transformation, but we will consdier the first difference of the square root transformation.
+
+```{r}
+# Plot of the First Difference of the Square Root Series
+dif_sqrt_df <- diff(sqrt(df$close)) |>
+            as_tibble() |>
+            mutate(
+              date = seq(
+                start_date + days(1),
+                end_date,
+                by="days"
+              )
+            ) |>
+            rename(close="value")
+```
+
+
+```{r, fig.width=6, fig.height=3, fig.align="center"}
+# First difference of the square root series
+dif_sqrt_df |>
+  ggplot(aes(x=date, y=close)) +
+    geom_line() +
+    labs(
+      title="First Difference of the Square Root Series"
+    ) +
+    scale_x_date(date_labels="%Y", date_breaks="1 year") +
+    theme_minimal() +
+    com_theme()
+```
+
+At this point we can see that the first difference of the logged series is probably the most appropriate transformation for out data, it appears to have less variance over time that the Logged Square Root Transformation. We will use this transformation for the rest of our analysis. 
+
+It is important to note that in our investigation up to this point we have not seen any sign of seasonality.
+
+Lets now consider the ACF and PACF for the First Difference of the Logged Series
+
+
+```{r}
+# log_dif_df will be shortened to ldd
+acf_ldd <- acf(log_dif_df$close, lag.max=30, plot=FALSE)
+ci <- qnorm((1 - .05) / 2) / sqrt(length(acf_ldd$n.used))
+```
+
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+# plot the ACF
+acf_ldd$acf |>
+  as_tibble() |>
+  mutate(lag=seq(0, 30, 1)) |>
+  ggplot(aes(x=lag, y=V1)) +
+    geom_point(size=1) +
+    geom_hline(yintercept=ci, linetype="dashed", col="blue") +
+    geom_hline(yintercept=-ci, linetype="dashed", col="blue") +
+    geom_segment(
+      aes(
+        x=lag,
+        xend=lag,
+        y=0,
+        yend=V1
+      )
+    ) +
+    labs(
+      title="ACF of the First Difference of the Logged Series",
+      x="Lag",
+      y="ACF"
+    ) +
+    theme_minimal() +
+    com_theme(
+      axis.title.x=element_text(vjust=1),
+    )
+```
+
+We can see from the ACF that there are no significant values, 
+
+```{r}
+# PACF of the first difference of the logged series
+pacf_ldd <- pacf(log_dif_df$close, lag.max=30, plot=FALSE)
+```
+
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+pacf_ldd$acf |>
+  as_tibble() |>
+  mutate(lag=seq(1, 30, 1)) |>
+  ggplot(aes(x=lag, y=V1)) +
+    geom_point(size=3) +
+    geom_hline(yintercept=ci, linetype="dashed", col="blue") +
+    geom_hline(yintercept=-ci, linetype="dashed", col="blue") +
+    geom_segment(
+      aes(
+        x=lag,
+        xend=lag,
+        y=0,
+        yend=V1
+      )
+    ) +
+    labs(
+      title="PACF of the First Difference of the Logged Series",
+      x="Lag",
+      y="PACF"
+    ) +
+    theme_minimal() +
+    com_theme(
+      axis.title.x=element_text(vjust=1),
+    )
+```
+
+### Model Fitting
+
+```{r}
+fit_results <- setNames(
+  data.frame(matrix(ncol=2, nrow=0)),
+  c("Model", "AIC")
+)
+```
+
+We can see from the ACF that there are significant values at lag 6 and 10. This would suggest that we could try a higher order ARIMA(6,1,0)(0,0,0) with only Auto Regressive features. Let us also check this time series with the forecast package to determine if there is any other models that we should consider.
+
+```{r}
+auto_model <- auto.arima(log_dif_df$close, stepwise=FALSE, approximation=FALSE)
+```
+
+```{r}
+auto_model
+```
+
+This suggests that we should consider an ARIMA(4,0,1) model in our analysis as well. As we put in the differenced time series it chose not to do any further differencing which makes its model actually an ARIMA(4,1,1).
+
+It also confirmed that we do not need to consider seasonality components in our model.
+
+We will now consider 3 different model, our higher order AR(6) model, the suggested ARIMA model, and the suggested ARIMA model with an additional MA() order.
+
+ARIMA(6,1,0)
+ARIMA(4,1,1)
+ARIMA(4,1,2)
+
+Let us first recall that we will only need to supply the Logged transformation of the series as we are going to be asking it to include the differencing for us.
+
+```{r}
+df_log <- df |>
+            mutate(close=log(close))
+```
+
+```{r}  
+fit_arima_610 <- arima(df_log$close, order=c(6,1,0))
+```
+
+```{r}
+fit_results <- rbind(
+  fit_results,
+  data.frame(
+    Model="ARIMA(6,1,0)",
+    AIC=fit_arima_610$aic
+  )
+)
+```
+
+```{r}
+fit_arima_411 <- arima(df_log$close, order=c(4,1,1))
+```
+
+```{r}
+fit_results <- rbind(
+  fit_results,
+  data.frame(
+    Model="ARIMA(4,1,1)",
+    AIC=fit_arima_411$aic
+  )
+)
+```
+
+```{r}
+fit_arima_412 <- Arima(df_log$close, order=c(4,1,2))
+```
+
+```{r}
+fit_results <- rbind(
+  fit_results,
+  data.frame(
+    Model="ARIMA(4,1,2)",
+    AIC=fit_arima_412$aic
+  )
+)
+```
+
+
+```{r}
+fit_results |>
+  gt() |>
+  tab_header(title="Model Fitting AIC Results")
+```
+
+We see from the AIC comparison, that all three models are very similar in their AIC values, but the ARIMA(4,1,1) model has the lowest AIC value. We will use this model for our forecast, next lets look at the residuals and model diagnostics.
+
+#### Residual Analysis of ARIMA(4,1,1)
+
+
+```{r}
+res_411 <- fit_arima_411$residuals
+res_acf <- acf(res_411, lag.max=30, plot=FALSE)
+res_pacf <- pacf(res_411, lag.max=30, plot=FALSE)
+res_ci <- qnorm((1 - .05) / 2) / sqrt(length(res_acf$n.used))
+```
+
+```{r}
+# Histogram of residuals
+res_411 |>
+  as_tibble() |>
+  ggplot(aes(x=x)) +
+    geom_histogram() +
+    labs(
+      title="ACF Residual Denisty",
+      x="Residuals",
+      y="Density"
+    ) +
+    theme_minimal() +
+    com_theme()
+```
+
+The residuals are normally distributed which is a good sign that our model is behaving well.
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+# ACF of residuals
+res_acf$acf |>
+  as_tibble() |>
+  mutate(lag=seq(0, 30, 1)) |>
+  ggplot(aes(x=lag, y=V1)) +
+    geom_point(size=1) +
+    geom_hline(yintercept=res_ci, linetype="dashed", col="blue") +
+    geom_hline(yintercept=-res_ci, linetype="dashed", col="blue") +
+    geom_segment(
+      aes(
+        x=lag,
+        xend=lag,
+        y=0,
+        yend=V1
+      )
+    ) +
+    labs(
+      title="ACF of the ARIMA(4,1,2) Residuals",
+      x="Lag",
+      y="ACF"
+    ) +
+    theme_minimal() +
+    com_theme(
+      axis.title.x=element_text(vjust=1),
+    )
+```
+
+```{r, fig.width=6, fig.height=4, fig.align="center"}
+# PACF of residuals
+res_pacf$acf |>
+  as_tibble() |>
+  mutate(lag=seq(1, 30, 1)) |>
+  ggplot(aes(x=lag, y=V1)) +
+    geom_point(size=1) +
+    geom_hline(yintercept=res_ci, linetype="dashed", col="blue") +
+    geom_hline(yintercept=-res_ci, linetype="dashed", col="blue") +
+    geom_segment(
+      aes(
+        x=lag,
+        xend=lag,
+        y=0,
+        yend=V1
+      )
+    ) +
+    labs(
+      title="PACF of the ARIMA(4,1,2) Residuals",
+      x="Lag",
+      y="PACF"
+    ) +
+    theme_minimal() +
+    com_theme(
+      axis.title.x=element_text(vjust=1), 
+    )
+```
+
+Both the ACF of the residuals and the PACF of the residuals are within the confidence intervals, this is a good sign that our model is behaving well.
+
+### Prediction
+
+
+```{r}
+# Forecast with the forecast function
+autoplot(forecast(fit_arima_412, h=5))
+```
+
+
+```{r}
+# Forecast with predict
+pred <- predict(fit_arima_412, n.ahead=10)
+pred_start_date <- as.Date("2021-10-29")
+pred_end_date <- pred_start_date + days(9)
+```
+
+
+```{r}
+pred_df <- data.frame("values"=as.matrix(pred$pred)) |>
+            mutate(
+              dataset="predictions",
+              date=seq(
+                pred_start_date,
+                pred_end_date,
+                by="days"
+              )
+            ) |>
+            rename(close="values")
+
+original_df <- df_log |>
+                as_tibble() |>
+                mutate(
+                  dataset="original",
+                  date=seq(
+                    start_date,
+                    end_date,
+                    by="days"
+                  )
+                )
+
+plot_data <- rbind(original_df, pred_df) |>
+              filter(date > as.Date("2021-01-01"))
+```
+
+
+```{r}
+plot_data |>
+  ggplot(aes(x=date, y=close, col=dataset)) +
+    geom_line(linewidth=1)
+```
+
+
+```{r}
+plot_data |>
+  ggplot(aes(x=date, y=exp(close), col=dataset)) +
+    geom_line(linewidth=1)
+```
+
+### Results - Shannon Long
+
+### Discussion - Zahlen Zbinden
+

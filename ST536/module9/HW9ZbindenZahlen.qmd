@@ -1,0 +1,134 @@
+---
+author: "Zahlen Zbinden"
+title: "Homework 9"
+format: "pdf"
+date: "3-4-2024"
+---
+
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(nycflights13)
+```
+
+1. In R, the function t.test() conducts one and two sample t-tests. For instance the following code runs Welch's two sample t-test using the sleep data in R.
+
+
+```{r}
+my_test_output <- t.test(extra ~ group, data = sleep)
+my_test_output
+```
+
+Verify that my_test_output is built on top of a list. Then, return the names of the elements of that list.
+
+
+```{r}
+# verifty that my_test_output is a list
+is.list(my_test_output)
+```
+
+
+```{r}
+# return the names of the elements in the list
+names(my_test_output)
+```
+
+Turn your code from the previous tasks into a function called conf_int() that, extracts the confidence intervale values from any t.test() output
+
+
+```{r}
+conf_int <- function(test_object) {
+  return(test_object$conf.int)
+}
+```
+
+```{r}
+conf_int(my_test_output)
+```
+
+2. The following code is an example of taking two vectors of the same length and joining them together element wise to createa a single character vector
+
+```{r}
+farm <- c(1, 1, 2, 2, 3, 4)
+field <- c("a", "b", "a", "b", "a", "a")
+paste(farm, field, sep = "_")
+```
+
+For instance, you might want to use this to generatea  singel identifiying variable from a couple of variables.
+
+Turn this code into a function called join_with_underscore(), that takes two vecotrs x and y as input, and joins them into a single character string.
+
+```{r}
+join_with_underscore <- function(list1, list2) {
+  return(paste(list1, list2, sep = "_"))
+}
+```
+
+```{r}
+# check that it works by testing with farm and field
+join_with_underscore(farm, field)
+```
+
+3. Reduce the repetition in this code by using across():
+
+```{r}
+starwars |>
+  mutate(
+    n_films = length(films),
+    n_vehicles = length(vehicles),
+    n_starships = length(starships)
+  )
+```
+
+starwars |>
+  mutate(
+    across(films:starships, length())
+  )
+  
+```{r}
+starwars |>
+  mutate(
+    across(films:starships, length)
+  )
+```
+
+4. Reduce the repition in this code, by writing two functions and using across()
+
+```{r}
+set.seed(1846689310)
+flights_small <- flights |>
+                  slice(sample(n(), size = 10))
+```
+
+```{r}
+flights_small |>
+  mutate(
+    sched_arr_time_hour = stringr::str_sub(sched_arr_time, start = -4, end = -3) |> parse_number(),
+    sched_arr_time_min = stringr::str_sub(sched_arr_time, start = -2, end = -1) |> parse_number(),
+    arr_time_house = stringr::str_sub(arr_time, start = -4, end = -3) |> parse_number(),
+    arr_time_min = stringr::str_sub(arr_time, start = -2, end = -1) |> parse_number(),
+    .keep = "used"
+  )
+```
+
+```{r}
+time_hour <- function(x) {
+  stringr::str_sub(x, start = -4, end = -3) |> parse_number()
+}
+
+time_min <- function(x) {
+  stringr::str_sub(x, start = -2, end = -1) |> parse_number()
+}
+```
+
+```{r}
+flights_small |>
+  mutate(
+    across(
+      c(sched_arr_time, arr_time), 
+      list(hour = ~ time_hour(.), min = ~ time_min(.)),
+      .names = "{.col}_{.fn}"
+    )
+  )
+```

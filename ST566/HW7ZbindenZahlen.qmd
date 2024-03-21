@@ -794,7 +794,7 @@ We can see from the plots of the ACF and PACF that the residuals do not show any
 fit_sarima211_111 <- Arima(
   l_elec,
   order = c(2,1,1),
-  seasona = c(1,1,1)
+  seasonal = c(1,1,1)
 )
 
 ```
@@ -1093,4 +1093,14 @@ ggplot(plot_data) +
     x = "Date",
     y = "Millions of KW/HR"
   )
+```
+
+```{r}
+# create model
+fit_sarima211_011 <- Arima(
+  electricity,
+  order = c(2,1,1),
+  seasona = c(0,1,1)
+)
+autoplot(forecast(fit_sarima211_011, h = 24))
 ```

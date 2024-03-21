@@ -1,0 +1,148 @@
+---
+author: "Zahlen Zbinden"
+title: "final project"
+format: "pdf"
+date: "3-4-2024"
+---
+
+
+```{r}
+library(lubridate)
+library(zoo)
+library(tidyverse)
+library(ggplot2)
+```
+
+
+```{r}
+df <- read_csv("data/Rainfall_data.csv")
+```
+
+
+```{r}
+head(df)
+```
+
+
+```{r}
+df <- df |>
+        mutate(
+          date = make_date(year=df$Year, month=df$Month)
+        ) |>
+        rename(
+          relative_humidity="Relative Humidity",
+          specific_humidity="Specific Humidity"
+        )
+```
+
+```{r}
+head(df)
+```
+
+
+```{r}
+df |>
+  ggplot() +
+    geom_line(
+      aes(
+        x=date,
+        y=Precipitation
+      )
+    )
+```
+
+
+```{r}
+df |>
+  ggplot() +
+    geom_line(
+      aes(
+        x=date,
+        y=Temperature
+      )
+    )
+```
+
+
+```{r}
+df |>
+  ggplot() +
+    geom_line(
+      aes(
+        x=date,
+        y=relative_humidity
+      )
+    )
+```
+
+
+```{r}
+df |>
+  ggplot() +
+    geom_line(
+      aes(
+        x=date,
+        y=specific_humidity
+      )
+    )
+```
+
+
+```{r}
+df <- read_csv("D:/RepoMan/osu/data/BTC_USD_Price_Prediction_Data.csv")
+```
+
+```{r}
+head(df)
+```
+
+```{r}
+df <- df |>
+        rename(
+          closing_price="Closing Price (USD)",
+          h24_open="24h Open (USD)",
+          h24_high="24h High (USD)",
+          h24_low="24h Low (USD)"
+        )
+```
+
+
+```{r}
+head(df)
+```
+
+
+```{r}
+df |>
+  ggplot(
+    aes(
+      x=Date,
+      y=closing_price
+    )
+  ) +
+    geom_line()
+```
+
+
+```{r}
+df |>
+  ggplot(
+    aes(
+      x=Date,
+      y=h24_open
+    )
+  ) +
+    geom_line()
+```
+
+
+```{r}
+df |>
+  ggplot(
+    aes(
+      x=Date,
+      y=h24_high
+    )
+  ) +
+    geom_line()
+```
