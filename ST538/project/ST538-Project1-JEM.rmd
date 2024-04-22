@@ -1,0 +1,175 @@
+---
+title: "ST 538 Project 1"
+author: "Group 3"
+date: "2024-04-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages("readxl")
+#install.packages("reader")
+#install.packages("tidyverse")
+#install.packages("car")
+#install.packages("numform")
+
+```
+
+
+```{r}
+library(readxl)
+library(readr)
+library(tidyverse)
+library(car)
+library(numform)
+```
+
+#Data Import and Cleaning
+
+```{r}
+temp <- tempfile()
+download.file("https://www2.census.gov/programs-surveys/acs/data/pums/2022/5-Year/csv_por.zip",temp)
+data <- read_csv(unz(temp, "psam_p41.csv"))
+unlink(temp)
+```
+
+```{r}
+#Select Needed Columns From Larger Dataset
+Proj1 <- data %>% 
+          select(SOCP, WAGP, SEX, AGEP, SCHL, SCIENGP) 
+```
+
+SOCP - Standard Occupational Classification (SOC) codes for 2018 and later based on 2018 SOC codes
+WAGP - Wages or salary income past 12 months
+SEX - Gender
+AGEP - Age
+SCHL - Educational attainment
+SCIENGP - Field of degree science and engineering flag - NSF definition
+
+
+```{r}
+#Challenge- SOCP Code as character, despite integer, and no real info in code
+#Select Only Teachers in SOCP Code:
+
+Proj1 <- Proj1 %>%
+  subset(SOCP %in% c("251000", "252010", "252020", "252030", "252050"))
+
+Proj1 <- Proj1 %>%
+  mutate(TEACH.TYPE = case_when(SOCP == "251000" ~ "Postsecondary",
+                                SOCP == "252010" ~ "Preschool And Kindergarten",
+                                SOCP == "252020" ~ "Elementary And Middle",
+                                SOCP == "252030" ~ "Secondary",
+                                SOCP == "252050" ~ "Special Ed"))
+
+Proj1$TEACH.TYPE <- as.factor(Proj1$TEACH.TYPE)
+str(Proj1)
+```
+
+```{r}
+#Challenge- Sex as 1/2 rather than 0/1 factor
+#Making Sex a flag 1=male)
+Proj1$SEX[Proj1$SEX==2] <- 0
+Proj1$SEX<- as.factor(Proj1$SEX)
+```
+
+
+```{r}
+#CHALLENGE- Many Preschool Teachers Without Degrees. Need to make Degree Level Flag 
+Proj1<- Proj1 %>%
+  mutate(DEGREE = case_when(SCHL <20 ~ "No Degree",
+                 SCHL == 20 ~ "Associates",
+                 SCHL == 21 ~ "Bachelors",
+                 SCHL == 22 ~ "Masters",
+                 SCHL == 23 ~ "Professional",
+                 SCHL == 24 ~ "Doctorate"))
+Proj1$DEGREE <- as.factor(Proj1$DEGREE)
+```
+
+```{r}
+#Challenge- SCIENGP as 1/2 rather than 0/1 factor
+#Making SCIENGP a flag 1=STEM Degree)
+Proj1$SCIENGP[Proj1$SCIENGP==2] <- 0
+Proj1$SCIENGP<- as.factor(Proj1$SCIENGP)
+```
+
+
+```{r}
+str(Proj1)
+```
+#Visualizations
+```{r}
+#Created Visualization on pairs
+pairs(Proj1[,-c(1,5)])
+```
+
+```{r}
+qplot(SEX,WAGP, data=Proj1)
+qplot(AGEP,WAGP, data=Proj1)
+qplot(DEGREE,WAGP, data=Proj1)
+qplot(TEACH.TYPE,WAGP, data=Proj1)
+qplot(SCIENGP,WAGP, data=Proj1)
+```
+
+
+
+
+```{r}
+#Create Full Model:
+
+ProjMod1 <- lm(WAGP ~ SEX + AGEP + TEACH.TYPE + DEGREE, data=Proj1)
+summary(ProjMod1)
+
+vif_model <- vif(ProjMod1)
+```
+# JM 4/18/24
+```{r}
+#names(Proj1)
+#View(Proj1)
+
+# Summary statistics for numeric variables
+summary(Proj1$WAGP)
+
+# Plot salary distribution
+ggplot(Proj1, aes(x = WAGP)) + 
+  geom_histogram(bins = 30, fill = "dodgerblue", color = "black") +
+  scale_x_continuous(labels = ff_denom(mix.denom = TRUE, prefix = '$', pad.char = '')) + 
+  labs(x = "Salary")
+
+# Boxplot of salary by education level
+ggplot(Proj1, aes(x = DEGREE, y = WAGP, fill = DEGREE)) + 
+  geom_boxplot() + 
+  scale_y_continuous(labels = ff_denom(mix.denom = TRUE, prefix = '$', pad.char = '')) +
+  theme_minimal() + labs(y = "Salary", x = "Degree", fill = "Gender")
+
+# Boxplot of salary by gender
+ggplot(Proj1, aes(x = SEX, y = WAGP, fill = SEX)) + 
+  geom_boxplot() + 
+  scale_y_continuous(labels = ff_denom(mix.denom = TRUE, prefix = '$', pad.char = '')) +
+  theme_minimal() + 
+  labs(y = "Salary", x = "Gender", fill = "Gender") +
+  scale_x_discrete(labels = c("Female", "Male")) +
+  scale_fill_discrete(labels = c("Female", "Male")) 
+
+# Scatter plot of salary by age
+ggplot(Proj1, aes(x = AGEP, y = WAGP)) +
+  geom_point() +  # Add the points to the plot
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_continuous(labels = ff_denom(mix.denom = TRUE, prefix = '$', pad.char = '')) +
+  labs(y = "Salary", x = "Age") +
+  theme_minimal()
+
+```
+# JM 4/18/24
+```{r}
+names(Proj1)
+glm_model_full <- glm(WAGP ~ AGEP + SCIENGP + DEGREE + TEACH.TYPE + SEX, data = Proj1, family = poisson())
+summary(glm_model_full)
+
+glm_model_r <- glm(WAGP ~ DEGREE + TEACH.TYPE + AGEP:SEX, data = Proj1, family = poisson())
+summary(glm_model_r)
+
+```
+

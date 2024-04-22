@@ -1,0 +1,104 @@
+---
+author: "Zahlen Zbinden"
+title: "More ggplot2"
+date: "4-9-2024"
+format: "pdf"
+---
+
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+```
+
+
+```{r}
+ggplot(
+  data=mpg,
+  aes(x=class, y=hwy)
+) +
+  geom_boxplot()
+```
+
+
+```{r}
+ggplot(
+  data=mpg,
+  aes(x=hwy, y=class)
+) +
+  geom_boxplot()
+```
+
+
+```{r}
+ggplot(
+  data=mpg,
+  aes(x=class, y=hwy)
+) +
+  geom_boxplot() +
+  coord_flip()
+```
+
+
+```{r}
+nz <- map_data("nz")
+```
+
+
+```{r}
+nz |>
+  ggplot(
+    aes(x=long, y=lat, group=group)
+  ) +
+  geom_polygon(fill="white", color="black")
+```
+```{r}
+nz |>
+  ggplot(
+    aes(x=long, y=lat, group=group)
+  ) +
+  geom_polygon(fill="white", color="black") +
+  coord_quickmap()
+```
+
+
+```{r}
+diamonds |>
+  select(c(cut)) |>
+  group_by(cut) |>
+  summarize(count=n()) |>
+  ggplot(
+    aes(x=1, y=count)
+  ) +
+    geom_bar(
+      aes(fill=cut),
+      stat="identity", 
+      width=1, 
+      position="fill"
+      ) +
+      coord_polar(theta="y")
+```
+
+
+```{r}
+mpg |>
+  ggplot(
+    aes(x=cty, y=hwy)
+  ) +
+  geom_point() +
+  geom_abline() +
+  coord_fixed()
+```
+
+
+```{r}
+data |>
+  ggplot() +
+    geom_function(
+      aes(),
+      stat="something",
+      position="something"
+    ) +
+    coord_function() +
+    facet_function()
+```

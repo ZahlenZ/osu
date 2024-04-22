@@ -1,0 +1,121 @@
+---
+title: "ST 538 Project 1"
+author: "Group 4"
+date: "2024-04-18"
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+r <- getOption("repos")
+r["CRAN"] <- "https://cloud.r-project.org/"
+options(repos=r)
+
+if(!require(readxl)) {
+    install.packages("readxl")
+}
+if(!require(reader)) {
+    install.packages("reader")
+}
+if(!require(car)) {
+    install.packages("car")
+}
+library(readxl)
+library(readr)
+library(tidyverse)
+library(car)
+```
+
+
+#Data Import and Cleaning
+
+```{r}
+temp <- tempfile()
+download.file("https://www2.census.gov/programs-surveys/acs/data/pums/2022/5-Year/csv_por.zip",temp)
+data <- read_csv(unz(temp, "psam_p41.csv"))
+unlink(temp)
+```
+
+```{r}
+#Select Needed Columns From Larger Dataset
+Proj1 <- data %>% 
+          select(SOCP, WAGP, SEX, AGEP, SCHL, SCIENGP) 
+```
+
+```{r}
+#Challenge- SOCP Code as character, despite integer, and no real info in code
+#Select Only Teachers in SOCP Code:
+
+Proj1 <- Proj1 %>%
+  subset(SOCP %in% c("251000", "252010", "252020", "252030", "252050"))
+
+Proj1 <- Proj1 %>%
+  mutate(TEACH.TYPE = case_when(SOCP == "251000" ~ "Postsecondary",
+                                SOCP == "252010" ~ "Preschool And Kindergarten",
+                                SOCP == "252020" ~ "Elementary And Middle",
+                                SOCP == "252030" ~ "Secondary",
+                                SOCP == "252050" ~ "Special Ed"))
+
+Proj1$TEACH.TYPE <- as.factor(Proj1$TEACH.TYPE)
+str(Proj1)
+```
+
+```{r}
+#Challenge- Sex as 1/2 rather than 0/1 factor
+#Making Sex a flag 1=male)
+Proj1$SEX[Proj1$SEX==2] <- 0
+Proj1$SEX<- as.factor(Proj1$SEX)
+```
+
+
+```{r}
+#CHALLENGE- Many Preschool Teachers Without Degrees. Need to make Degree Level Flag 
+Proj1<- Proj1 %>%
+  mutate(DEGREE = case_when(SCHL <20 ~ "No Degree",
+                 SCHL == 20 ~ "Associates",
+                 SCHL == 21 ~ "Bachelors",
+                 SCHL == 22 ~ "Masters",
+                 SCHL == 23 ~ "Professional",
+                 SCHL == 24 ~ "Doctorate"))
+Proj1$DEGREE <- as.factor(Proj1$DEGREE)
+```
+
+```{r}
+#Challenge- SCIENGP as 1/2 rather than 0/1 factor
+#Making SCIENGP a flag 1=STEM Degree)
+Proj1$SCIENGP[Proj1$SCIENGP==2] <- 0
+Proj1$SCIENGP<- as.factor(Proj1$SCIENGP)
+```
+
+
+```{r}
+str(Proj1)
+```
+#Visualizations
+```{r}
+#Created Visualization on pairs
+pairs(Proj1[,-c(1,5)])
+```
+
+```{r}
+qplot(SEX,WAGP, data=Proj1)
+qplot(AGEP,WAGP, data=Proj1)
+qplot(DEGREE,WAGP, data=Proj1)
+qplot(TEACH.TYPE,WAGP, data=Proj1)
+qplot(SCIENGP,WAGP, data=Proj1)
+```
+
+
+
+
+```{r}
+#Create Full Model:
+
+ProjMod1 <- lm(WAGP ~ SEX + AGEP + TEACH.TYPE + DEGREE, data=Proj1)
+summary(ProjMod1)
+
+vif_model <- vif(ProjMod1)
+```
+

@@ -1,0 +1,302 @@
+---
+author: "Zahlen Zbinden"
+title: "Lab - Linear Models"
+date: "4-17-2024"
+format: "pdf"
+---
+
+
+```{r}
+library(ISLR2)
+library(leaps)
+library(glmnet)
+```
+
+```{r}
+# Column names
+names(Hitters)
+```
+
+```{r}
+# Check NA 
+colSums(is.na(Hitters))
+# Remove NA
+hitter <- na.omit(Hitters)
+```
+
+```{r}
+# full "exhaustive" model search best subset selection using RSS
+# nvmax default is 8
+regfit_full <- regsubsets(Salary ~ ., data=hitter, nvmax=19)
+reg_summary <- summary(regfit_full)
+summary(regfit_full)
+```
+
+```{r}
+# plot the four tests for goodness of fit
+par(mfrow=c(2, 2))
+plot(reg_summary$rss, xlab="Number of Variables", ylab="RSS", type="l")
+points(
+    which.min(reg_summary$rss),
+    reg_summary$rss[which.min(reg_summary$rss)],
+    col="red",
+    cex=2,
+    pch=20
+)
+plot(reg_summary$adjr2, xlab="Number of Variables", ylab="Adjusted RSq", type="l")
+points(
+    which.max(reg_summary$adjr2),
+    reg_summary$adjr2[which.max(reg_summary$adjr2)],
+    col="red",
+    cex=2,
+    pch=20
+)
+plot(reg_summary$cp, xlab="Number of Variables", ylab="Cp", type="l")
+points(
+    which.min(reg_summary$cp),
+    reg_summary$cp[which.min(reg_summary$cp)],
+    col="red",
+    cex=2,
+    pch=20
+)
+plot(reg_summary$bic, xlab="Number of Variables", ylab="BIC", type="l")
+points(
+    which.min(reg_summary$bic),
+    reg_summary$bic[which.min(reg_summary$bic)],
+    col="red",
+    cex=2,
+    pch=20
+)
+```
+
+```{r}
+# built in plot of regsubsets()
+plot(regfit_full, scale="r2")
+plot(regfit_full, scale="adjr2")
+plot(regfit_full, scale="Cp")
+plot(regfit_full, scale="bic")
+```
+
+```{r}
+# checking the coefficients of different models
+coef(regfit_full, 6)
+```
+
+```{r}
+# regsubsets to do forward and backward model selection
+regfit_for <- regsubsets(Salary ~ ., data=hitter, nvmax=19, method="forward")
+regfit_back <- regsubsets(Salary ~ ., data=hitter, nvmax=19, method="backward")
+```
+
+```{r}
+summary(regfit_for)
+```
+
+```{r}
+summary(regfit_back)
+```
+
+```{r}
+# built in plot of regsubsets()
+plot(regfit_for, scale="r2")
+plot(regfit_for, scale="adjr2")
+plot(regfit_for, scale="Cp")
+plot(regfit_for, scale="bic")
+```
+
+Above we used Cp, BIC, and adjusted R^2 to help us with model selection. Now we will consider how to do this using validations set and cross-validation approaches.
+
+```{r}
+set.seed(289)
+# create a random train/test split (prod to make the right split size here 70/30)
+train <- sample(c(TRUE, FALSE), nrow(hitter), rep=TRUE, prob=c(0.7, 0.3))
+test <- (!train)
+```
+
+
+```{r}
+# fit the best linear model on the training set
+# hitter[train, ] says all rows where train is true and all columns
+regfit_best <- regsubsets(Salary ~ ., data=hitter[train, ], nvmax=19)
+reg_summary <- summary(regfit_best)
+summary(regfit_best)
+```
+
+
+```{r}
+set.seed(289)
+# create a random train/test split (prod to make the right split size here 70/30)
+train <- sample(c(TRUE, FALSE), nrow(hitter), rep=TRUE, prob=c(0.7, 0.3))
+test <- (!train)
+regfit_best <- regsubsets(Salary ~ ., data=hitter[train, ], nvmax=19)
+# validation set error to find best model of each size
+# model.matrix creates an X matrix from the data
+# salary is not included in the matrix
+test_mat <- model.matrix(Salary ~ ., data=hitter[test, ])
+# create vector to store error, repeat NA 19 times
+val_errors <- rep(NA, 19)
+
+# loop through each model (size 1 to 19)
+for (i in 1:19) {
+    # gather coeffiecients from model
+    coefi <- coef(regfit_best, id=i)
+    # matrix multiplication of coefficients and test matrix
+    pred <- test_mat[, names(coefi)] %*% coefi
+    # calculate mean squared error for each model
+    val_errors[i] <- mean((hitter$Salary[test] - pred)^2)
+}
+val_errors
+# which model had the lowest MSE
+model_num <- which.min(val_errors)
+coef(regfit_best, model_num)
+```
+
+
+
+```{r}
+# write function to "predict"
+
+predict.regsubsets <- function(object, newdata, id, ...) {
+    func <- as.formula(regfit_best$call[[2]])
+    mat <- model.matrix(func, newdata)
+    coefi <- coef(object, id=id)
+    xvars <- names(coefi)
+    mat[, xvars] %*% coefi
+}
+```
+
+utilizing cross validation
+
+```{r}
+# number of folds
+k <- 10
+n <- nrow(hitter)
+set.seed(289)
+folds <- sample(rep(1:k, length=n))
+cv_errors <- matrix(
+    NA,
+    k,
+    19,
+    dimnames=list(NULL, paste(1:19))
+)
+```
+
+for loop for cross validation
+
+
+```{r}
+
+predict.regsubsets <- function(object, newdata, id, ...) {
+    func <- as.formula(regfit_best$call[[2]])
+    mat <- model.matrix(func, newdata)
+    coefi <- coef(object, id=id)
+    xvars <- names(coefi)
+    mat[, xvars] %*% coefi
+}
+
+for (j in 1:k) {
+    best_fit <- regsubsets(
+        Salary ~ .,
+        data=hitter[folds != j, ],
+        nvmax=19
+    )
+    for (i in 1:19) {
+        pred <- predict(
+            best_fit,
+            hitter[folds == j, ],
+            id=i,
+        )
+        cv_errors[j, i] <- mean((hitter$Salary[folds ==  j] - pred)^2)
+    }
+}
+mean_cv_errors <- apply(cv_errors, 2, mean)
+mean_cv_errors
+which.min(mean_cv_errors)
+```
+
+```{r}
+par(mfrow=c(1, 1))
+plot(mean_cv_errors, type="b")
+```
+
+see that the cross validation selected the 11 variable model, now fit the model with the full data set
+
+```{r}
+reg_best <- regsubsets(Salary ~ ., data=hitter, nvmax=19)
+coef(reg_best, 11)
+```
+
+# Ridge Regression and Lasso
+
+```{r}
+# split data into attributes and labels (remove the intercept term)
+X <- model.matrix(Salary ~ ., data=hitter)[, -1]
+y <- hitter$Salary
+# create a grid for possible lambda values
+grid <- 10^seq(10, -2, length=100)
+# alpha=0 for ridge regression alpha=1 for lasso regression
+# by default standardize=TRUE standardize the variables to same scale
+ridge_model <- glmnet(X, y, alpha=0, lambda=grid, standardize=TRUE)
+coef(ridge_model)
+```
+
+associated with each value of lambda is a vector of ridge regression coefficients, stored in a matrix. each row is an attribute, and each column is the regression coefficient used for a particular value of lambda
+
+```{r}
+dim(coef(ridge_model))
+```
+
+```{r}
+ridge_model$lambda[50]
+```
+
+```{r}
+coef(ridge_model)[, 50]
+```
+
+```{r}
+sqrt(sum(coef(ridge_model)[-1, 50]^2))
+```
+
+```{r}
+set.seed(289)
+train <- sample(1:nrow(X), nrow(X) / 2)
+test <- (-train)
+y_test <- y[test]
+```
+
+```{r}
+ridge_model <- glmnet(X[train, ], y[train], alpha=0, lambda=grid, standardize=TRUE)
+# s sets the lambda for the predictions
+ridge_pred <- predict(ridge_model, s=4, newx=X[test, ])
+```
+
+```{r}
+cv_out <- cv.glmnet(X[train, ], y[train], alpha=0)
+best_lambda <- cv_out$lambda.min
+ridge_pred <- predict(ridge_model, s=best_lambda, newx=X[test, ])
+mean((ridge_pred - y_test)^2)
+```
+
+```{r}
+out <- glmnet(X, y, alpha=0)
+predict(out, type="coefficients", s=best_lambda)[1:20, ]
+```
+
+
+# Lasso
+
+```{r}
+lasso_model <- glmnet(X[train, ], y[train], alpha=1, lambda=grid)
+plot(lasso_model)
+```
+
+
+```{r}
+set.seed(289)
+cv_out <- cv.glmnet(X[train, ], y[train], alpha=1)
+plot(cv_out)
+best_lambda <- cv_out$lambda.min
+lasso_pred <- predict(lasso_model, s=best_lambda, newx=X[test, ])
+mean((lasso_pred - y_test)^2)
+```

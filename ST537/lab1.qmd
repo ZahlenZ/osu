@@ -1,0 +1,112 @@
+---
+author: "Zahlen Zbinden"
+title: "Lab 1"
+format: "pdf"
+date: "04-06-2024"
+---
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+```
+
+
+```{r}
+mpg |>
+  ggplot(aes(x=displ, y=hwy)) +
+    geom_point()
+```
+
+
+```{r}
+ggplot(data=mpg)
+```
+
+```{r}
+str(mpg)
+```
+
+1. A blank graph
+2. 234 x 11
+3. Categorical, type of drive train. front-wheel, rear-wheel, 4wd
+4. find below
+5. It just shows all the unique pairs of class and drive. It doesn't have any numerical values that would lead to a deeper understanding of the data.
+
+
+```{r}
+mpg |>
+  ggplot() +
+    geom_point(aes(x=cyl, y=hwy))
+```
+
+
+```{r}
+mpg |>
+  ggplot() +
+    geom_point(aes(x=drv, y=class))
+```
+
+
+```{r}
+mpg |>
+  ggplot() +
+    geom_point(aes(x=displ, y=hwy, color=class, size=cty))
+```
+
+```{r}
+mpg |>
+  ggplot() +
+    geom_point(aes(x=displ, y=hwy, size=class))
+```
+
+```{r}
+mpg |>
+  ggplot() +
+    geom_point(aes(x=displ, y=hwy, color=class, shape=class))
+```
+
+Notice that aes is a mapping, and mapping are displayed in the legend
+
+
+```{r}
+mpg |>
+  ggplot() +
+    geom_point(aes(x=displ, y=hwy, color="blue"))
+```
+
+opposed to
+
+
+```{r}
+mpg |>
+  ggplot() +
+    geom_point(aes(x=displ, y=hwy), color="blue")
+```
+
+```{r}
+str(mpg)
+```
+
+```{r}
+sapply(mpg, function(x) length(unique(x)))
+```
+
+1. the points are not blue because we mapped color to the constant "blue", we didn't set a color outside of the aes call.
+2. manufacturer, model, cyl, trans, drv, fl, class are categorical variables
+3. 
+  - color to categorical or to continuous gets a gradient
+  - size to categorical will give a different size for each category
+  - size to continuous (displ) will bin the values and give a different size for each bin
+  - shape to categorical will give a different shape for each category
+  - shape to continuous is not recomended as shapes are discrete and continuous is not, also there is a limited number of shapes that can be displayed
+4. You get a perfect 45 degree line because you are plotting the same variable against itself.
+5. This aes is easier to see if you set the shape to something like a circle with no fill, stroke controls the size of the border of the circle.
+6. You get different colors based on the logical that you provided.
+
+
+```{r}
+mpg |>
+  ggplot() +
+    geom_point(aes(x=displ, y=displ, color=displ < 5), shape=21)
+```
+

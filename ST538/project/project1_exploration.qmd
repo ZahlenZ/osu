@@ -1,0 +1,349 @@
+---
+author: "Group 3"
+title: "ST 538 Project 1"
+date: "4-19-2024"
+format: "pdf"
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+r <- getOption("repos")
+r["CRAN"] <- "https://cloud.r-project.org/"
+options(repos=r)
+
+if(!require(readxl)) {
+    install.packages("readxl")
+}
+if(!require(reader)) {
+    install.packages("reader")
+}
+if(!require(car)) {
+    install.packages("car")
+}
+if(!require(gt)) {
+  install.packages("gt")
+}
+if(!require(numform)) {
+  install.packages("numform")
+}
+
+library(car)
+library(ggplot2)
+library(glmnet)
+library(gt)
+library(leaps)
+library(numform)
+library(readxl)
+library(reader)
+library(tidyverse)
+set.seed(289)
+```
+
+```{r, include=FALSE, echo=FALSE}
+temp <- tempfile()
+download.file("https://www2.census.gov/programs-surveys/acs/data/pums/2022/5-Year/csv_por.zip", temp)
+data <- read_csv(unz(temp, "psam_p41.csv"))
+unlink(temp)
+```
+
+We are interested in studying the relationship between a teachers salary and several possible factors, which are the most important and how do they affect the salary of a teacher. 
+
+Our Question: What factors are most important in determining a teachers salary?
+
+|Variable Name|Description|
+|---|---|
+|SOCP|Occupation code|
+|WAGP|Wages or salary past 12 months|
+|SEX|Sex of person(m/f)|
+|AGEP|Age of person|
+|SCHL|Educational attainment|
+|SCIENGP|Field of degree(na-less than bachelor, 1 science/engineering, 0 not)|
+|LANX|language spoken at home(1-speaks other, 2-only english)|
+|RACAIAN|american indian/alaska native(0-no, 1-yes)|
+|RACBLK|black/african american(0-no, 1-yes)|
+|RACWHT|white(0-no, 1-yes)|
+
+Occupation code for teachers are 251000, 252010, 252020, 252030, 252050, we are not including "other teachers and instructors" as it is not specific enough to determine if they are teaching at a school or not, this might include things like substitute teachers, which will inherently have a lower salary as they may not be working full time.
+
+Filtering out teachers with reported wages less than $27456 as this is the minimum wage working full time in non-urban counties.
+
+Filtering out teachers making more than 150,000 K as this is close to the maximum wage + add ons (coaching, etc) for a teacher in the Lake Oswego area.
+
+Transform:
+SOCP: create column with readable teacher level names
+SEX: 0 for female, 1 for male
+DEGREE: create column with readable degree names
+SCIENGP: 1 - stem, 2 - not_stem, 3 - no_bachelor
+LANX: 1 - speaks other, 0 - only english
+
+
+```{r}
+proj1 <- data |>
+  subset(SOCP %in% c("251000", "252010", "252020", "252030", "252050")) |>
+  filter(WAGP > 27456 | WAGP < 150000) |>
+  mutate(TEACH_TYPE = case_when(
+    SOCP == "251000" ~ "postsecondary",
+    SOCP == "252010" ~ "pre_elementary",
+    SOCP == "252020" ~ "elementary/middle",
+    SOCP == "252030" ~ "secondary",
+    SOCP == "252050" ~ "special_ed"
+  )) |>
+  filter(TEACH_TYPE %in% c("elementary/middle", "secondary")) |>
+  mutate(SEX = ifelse(SEX == 2, 0, SEX)) |>
+  mutate(DEGREE = case_when(
+    SCHL < 20 ~ "no degree",
+    SCHL == 20 ~ "associates",
+    SCHL == 21 ~ "bachelors",
+    SCHL == 22 ~ "masters",
+    SCHL == 23 ~ "professional",
+    SCHL == 24 ~ "doctorate"
+  )) |>
+  mutate(SCIENGP = case_when(
+    is.na(SCIENGP) ~ "no_bachelor",
+    SCIENGP == 1 ~ "stem",
+    SCIENGP == 2 ~ "not_stem"
+  )) |>
+  mutate(LANX = ifelse(LANX == 1, 1, 0)) |>
+  mutate_at(c(
+    "TEACH_TYPE", 
+    "SEX", 
+    "DEGREE", 
+    "SCIENGP",
+    "LANX",
+    "RACAIAN",
+    "RACBLK",
+    "RACWHT"
+    ),
+    as.factor
+  ) |>
+  select(c(
+    "TEACH_TYPE", 
+    "SEX", 
+    "DEGREE", 
+    # "SCIENGP", There seems to be some colinearity between SCIENGP and DEGREE
+    "WAGP", 
+    "AGEP", 
+    "LANX", 
+    "RACWHT"
+    )
+  )
+```
+
+Get an idea for the distribution of the WAGP target variable. From the plots below and the summary statistics we can see that there is a large variation in the wages of teachers, with some reported as low as 80, and some as high as 496000, with a median and mean of roughly 49000.
+
+```{r}
+summary_df <- proj1 |>
+  summarise(
+    min=min(WAGP),
+    median=median(WAGP),
+    mean=mean(WAGP),
+    stdev=sd(WAGP),
+    q25=quantile(WAGP, 0.25),
+    q75=quantile(WAGP, 0.75),
+    q99=quantile(WAGP, 0.99),
+    max=max(WAGP)
+  )
+summary_df |>
+  gt() |>
+  tab_header(title="Wage Summary Statistics")
+```
+
+```{r}
+proj1 |>
+  ggplot(aes(x=WAGP)) +
+    geom_histogram(bins=50, fill="dodgerblue") +
+    labs(
+      title="Wage distribution of all teachers",
+      x="Wages in past 12 months", 
+      y="Count"
+    )
+```
+
+```{r}
+proj1 |>
+  ggplot(aes(x=WAGP)) +
+    geom_boxplot() +
+    labs(
+      title="Wage Distribution of all teachers",
+      x="Wage in past 12 months"
+    ) +
+    theme_minimal()
+```
+
+
+```{r}
+proj1 |>
+  ggplot(aes(x=WAGP, y=TEACH_TYPE)) +
+    geom_violin() +
+    geom_boxplot(width=0.1) +
+    scale_y_discrete(
+      limits=c(
+        "secondary",
+        "elementary/middle"
+      )
+    ) +
+    scale_x_continuous(labels=ff_denom(mix.denom=TRUE, prefix="$", pad.char="")) +
+    labs(
+      title="Wage distribution among different type of teachers",
+      y="Type of Teacher",
+      x="Wage in past 12 months"
+    ) +
+    theme_minimal() 
+```
+
+```{r}
+proj1 |>
+  ggplot(aes(x=WAGP, y=SEX)) +
+    geom_violin() +
+    geom_boxplot(width=0.1) +
+    labs(
+      title="Wage distribution among Sex of teachers",
+      y="Sex",
+      x="Wage in past 12 months"
+    ) +
+    scale_y_discrete(labels=(c("female", "male"))) +
+    scale_x_continuous(labels=ff_denom(mix.denom=TRUE, prefix="$", pad.char="")) +
+    theme_minimal() 
+```
+
+```{r}
+proj1 |>
+  ggplot(aes(x=WAGP, y=DEGREE)) +
+    geom_violin() +
+    geom_boxplot(width=0.1) +
+    labs(
+      title="Wage distribution among degrees teachers",
+      y="Degree",
+      x="Wage in past 12 months"
+    ) +
+    scale_y_discrete(
+      limits=c(
+        "doctorate", 
+        "professional", 
+        "masters", 
+        "bachelors", 
+        "associates"
+        )
+      ) +
+    scale_x_continuous(labels=ff_denom(mix.denom=TRUE, prefix="$", pad.char="")) +
+    theme_minimal() 
+```
+
+```{r}
+proj1 |>
+  ggplot(aes(x=WAGP, y=SCIENGP)) +
+    geom_violin() +
+    geom_boxplot(width=0.1) +
+    labs(
+      title="Wage distribution among STEM trained teachers",
+      y="STEM",
+      x="Wage in past 12 months"
+    ) +
+    scale_x_continuous(labels=ff_denom(mix.denom=TRUE, prefix="$", pad.char="")) +
+    theme_minimal() 
+```
+
+Exhaustive search over all possible models with 10 variables
+
+```{r}
+regfit_full <- regsubsets(WAGP ~ ., data=proj1, nvmax=10)
+reg_summary <- summary(regfit_full)
+reg_summary
+```
+
+Based on adjusted R2 and CP scores we would want to go with the 8 variable model.
+
+```{r}
+# plot the four tests for goodness of fit
+par(mfrow=c(2, 2))
+plot(reg_summary$rss, xlab="Number of Variables", ylab="RSS", type="l")
+points(
+    which.min(reg_summary$rss),
+    reg_summary$rss[which.min(reg_summary$rss)],
+    col="red",
+    cex=2,
+    pch=20
+)
+plot(reg_summary$adjr2, xlab="Number of Variables", ylab="Adjusted RSq", type="l")
+points(
+    which.max(reg_summary$adjr2),
+    reg_summary$adjr2[which.max(reg_summary$adjr2)],
+    col="red",
+    cex=2,
+    pch=20
+)
+plot(reg_summary$cp, xlab="Number of Variables", ylab="Cp", type="l")
+points(
+    which.min(reg_summary$cp),
+    reg_summary$cp[which.min(reg_summary$cp)],
+    col="red",
+    cex=2,
+    pch=20
+)
+plot(reg_summary$bic, xlab="Number of Variables", ylab="BIC", type="l")
+points(
+    which.min(reg_summary$bic),
+    reg_summary$bic[which.min(reg_summary$bic)],
+    col="red",
+    cex=2,
+    pch=20
+)
+```
+
+Finding best model with training and validation data
+
+```{r}
+train <- sample(c(TRUE, FALSE), nrow(proj1), rep=TRUE)
+test <- (!train)
+regfit_best <- regsubsets(WAGP ~ ., data=proj1[train, ], nvmax=10)
+test_mat <- model.matrix(WAGP ~ ., data=proj1[test, ])
+val_errors <- rep(NA, 10)
+
+for (i in 1:10) {
+    coefi <- coef(regfit_best, id=i)
+    pred <- test_mat[, names(coefi)] %*% coefi
+    val_errors[i] <- mean((proj1$WAGP[test] - pred)^2)
+}
+val_errors
+model_num <- which.min(val_errors)
+coef(regfit_best, model_num)
+model_num
+```
+
+Ridge Regression
+
+```{r}
+X <- model.matrix(WAGP ~ ., data=proj1)[, -1]
+y <- proj1$WAGP
+grid <- 10^seq(10, -2, length=100)
+ridge_model <- glmnet(X, y, alpha=0, lambda=grid)
+coef(ridge_model)
+```
+
+```{r}
+ridge_model <- glmnet(X[train, ], y[train], alpha=0)
+ridge_pred <- predict(ridge_model, s=4, newx=X[test, ])
+mean((ridge_pred - y[test])^2)
+```
+
+```{r}
+cv_ridge <- cv.glmnet(X[train, ], y[train], alpha=0)
+plot(cv_ridge)
+best_lambda <- cv_ridge$lambda.min
+best_lambda
+```
+
+```{r}
+ridge_pred <- predict(ridge_model, s=best_lambda, newx=X[test, ])
+mean((ridge_pred - y[test])^2)
+```
+
+Lasso Regression
+
+```{r}
+cv_out <- cv.glmnet(X[train, ], y[train], alpha=1)
+plot(cv_out)
+```
+
+Forward Selection
+
+Backward Selection

@@ -1,0 +1,162 @@
+---
+author: "Zahlen Zbinden"
+title: "Communte Plot"
+date: "04-20-2024"
+format: pdf
+---
+
+
+```{r}
+library(ggplot2)
+library(cowplot)
+library(magick)
+library(tidyverse)
+```
+
+
+```{r}
+commute <- readr::read_rds("data/commute.rds")
+```
+
+
+```{r}
+head(commute)
+```
+
+```{r}
+bike_url = "https://upload.wikimedia.org/wikipedia/commons/0/04/Bike_icon.png"
+oregon_url = "https://static.thenounproject.com/png/3168304-200.png"
+```
+
+```{r}
+plot_points <- commute |>
+  filter(
+    transport_type == "Bicycle" 
+    & state_name %in% c(
+      "Alaska", "Idaho", "California", "Washington", "Nevada"
+      )
+  ) |>
+  arrange(desc(prop))
+```
+
+
+```{r}
+my_plot <- commute |>
+  filter(
+    transport_type == "Bicycle" 
+    & state_name %in% c(
+      "Oregon", "Alaska", "Idaho", "California", "Washington", "Nevada"
+      )
+  ) |>
+  arrange(desc(prop)) |>
+  ggplot(aes(x=reorder(state_name, -prop), y=prop, color=state_name)) +
+    geom_point(
+      size=5
+    ) +
+    geom_segment(
+      aes(
+        x=state_name,
+        xend=state_name,
+        y=0,
+        yend=prop
+      ),
+      size=2
+    ) +
+    labs(
+      title="Proportion of People Commuting by Bicycle",
+      subtitle="Pacific Northwest States",
+      x=""
+    ) +
+    scale_color_manual(
+      values=c(
+        "#002776", "#F8C200", "#A9CCE3", "#CDB391", "#2E8B57", "#4169E1"
+        )
+    ) +
+    theme_cowplot() +
+    theme(
+      plot.title=element_text(size=20,vjust=30, hjust=0.5),
+      plot.subtitle=element_text(size=15, vjust=40, hjust=0.5),
+      plot.margin=unit(c(5, 2, 4, 3.5), "cm"),
+      axis.line=element_blank(),
+      axis.ticks=element_blank(),
+      axis.text.y=element_blank(),
+      axis.text.x=element_text(size=15, face="bold"),
+      axis.title.y=element_blank(),
+      legend.position="none"
+    )
+
+ggdraw() +
+  draw_image(oregon_url) +
+  draw_plot(my_plot)
+```
+
+```{r}
+plot_data <- commute |>
+  filter(
+    transport_type == "Bicycle" 
+    & state_name %in% c(
+      "Oregon", "Alaska", "Idaho", "California", "Washington", "Nevada"
+      )
+  ) |>
+  mutate(state_name=fct_relevel(
+    state_name, 
+    "Oregon", "Alaska", "California", "Idaho", "Washington", "Nevada"
+    )
+  )
+
+plot_points <- commute |>
+  filter(
+    transport_type == "Bicycle" 
+    & state_name %in% c(
+      "Alaska", "Idaho", "California", "Washington", "Nevada"
+      )
+  ) |>
+  mutate(state_name=fct_relevel(
+    state_name,
+    "Alaska", "California", "Idaho", "Washington", "Nevada"
+  ))
+
+
+my_plot <- plot_points |>
+  ggplot(aes(x=reorder(state_name, -prop), y=prop, color=state_name)) +
+    geom_point(
+      size=5
+    ) +
+    geom_segment(
+      data=plot_data,
+      aes(
+        x=state_name,
+        xend=state_name,
+        y=0,
+        yend=prop
+      ),
+      size=2
+    ) +
+    labs(
+      title="Proportion of People Commuting by Bicycle",
+      subtitle="Pacific Northwest States",
+      x=""
+    ) +
+    scale_color_manual(
+      values=c(
+        "#002776", "#F8C200", "#A9CCE3", "#CDB391", "#2E8B57", "#4169E1"
+        )
+    ) +
+    theme_cowplot() +
+    theme(
+      plot.title=element_text(size=20,vjust=30, hjust=0.5),
+      plot.subtitle=element_text(size=15, vjust=40, hjust=0.5),
+      plot.margin=unit(c(5, 3, 4, 3.5), "cm"),
+      axis.line=element_blank(),
+      axis.ticks=element_blank(),
+      axis.text.y=element_blank(),
+      axis.text.x=element_text(size=15, face="bold"),
+      axis.title.y=element_blank(),
+      legend.position="none"
+    )
+
+ggdraw() +
+  draw_image(oregon_url) +
+  draw_image(bike_url, scale=0.1, x=.195, y=.223) +
+  draw_plot(my_plot)
+```

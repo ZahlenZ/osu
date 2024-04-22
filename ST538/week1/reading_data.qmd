@@ -1,0 +1,63 @@
+---
+author: "Zahlen Zbinden"
+title: "Reading Data"
+output: "pdf"
+date: "04-03-2024"
+---
+
+```{r}
+library(tidyverse)
+library(hflights)
+library(ggplot2)
+```
+
+```{r}
+download.file("http://www2.census.gov/acs2012_5yr/pums/csv_por.zip", destfile="data/csv_por.zip")
+```
+
+
+```{r}
+unzip("data/csv_por.zip", list=TRUE)
+```
+
+extract and read in one go
+
+```{r}
+or_sm <- read.csv(
+    unz("data/csv_por.zip", "ss12por.csv"), 
+    nrows=10, 
+    stringsAsFactors=FALSE
+    )
+
+str(or_sm)
+```
+
+
+```{r}
+df <- tibble::as_tibble(hflights)
+```
+
+
+```{r}
+df |>
+  group_by(Month) |>
+  summarize(avg_delay = mean(ArrTime, na.rm=TRUE))
+```
+
+
+```{r}
+who |>
+          pivot_longer(
+            cols=new_sp_m014:newrel_f65,
+            names_to="key",
+            values_to="cases",
+            values_drop_na=TRUE
+          ) |>
+          select(c("country", "year", "key", "cases")) |>
+          separate(key, into=c("new", "type", "sexage"), sep="_") |>
+          separate(sexage, into=c("sex", "age"), sep=1, convert=TRUE) |>
+          group_by(country, year, sex) |>
+          summarise(cases=sum(cases, na.rm=TRUE)) |>
+          ggplot(aes(x=year, y=cases)) +
+            geom_bar(aes(fill=sex), stat="identity", position="dodge") 
+```

@@ -1,0 +1,54 @@
+---
+author: "Gavin, Gisele, Joshua, Zahlen"
+title: "Replicate a Plot"
+date: "4-9-2024"
+format: "pdf"
+---
+
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+```
+
+
+```{r}
+wildfires <- read_csv("https://raw.githubusercontent.com/BuzzFeedNews/2018-07-wildfire-trends/master/data/calfire_frap.csv") |>
+  mutate(plot_date = as.Date(format(alarm_date,"2017-%m-%d")))
+```
+
+
+```{r}
+head(wildfires)
+```
+
+
+```{r}
+wildfires |>
+  ggplot() +
+    geom_point(
+      aes(x=plot_date, y=year_, size=gis_acres),
+      color="#fb9308",
+      alpha=0.75
+    ) +
+    scale_x_date(date_labels="%b", date_breaks="1 month") +
+    scale_y_reverse(
+      breaks=seq(from=1950, to=2010, by=20),
+      minor_breaks=seq(from=1950, to=2017, by=1)
+    ) +
+    scale_size_continuous(range=c(1,15)) +
+    theme(
+      panel.background=element_rect(fill="#1f1f20"),
+      plot.background=element_rect(fill="#1f1f20"),
+      panel.grid.minor.x=element_blank(),
+      panel.grid.major.x=element_blank(),
+      panel.grid.minor.y=element_line(color="#4b4b4c"),
+      panel.grid.major.y=element_line(color="#4b4b4c", linewidth=1),
+      axis.title=element_blank(),
+      axis.ticks.x=element_blank(),
+      axis.text=element_text(color="white", size=22),
+      axis.text.y=element_text(margin=unit(c(0, .25, 0, 0), "cm")),
+      plot.margin=(margin=margin(10, 10, 30, 30)),
+      legend.position="none"
+    )
+```

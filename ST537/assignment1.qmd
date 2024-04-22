@@ -1,0 +1,321 @@
+---
+author: "Zahlen Zbinden"
+title: "Assignment 1"
+date: "04-06-2024"
+format: "pdf"
+geometry: "margin=1cm"
+---
+
+
+```{r, include=FALSE}
+library(gapminder)
+library(ggplot2)
+library(ggsankey)
+library(tidyverse)
+library(viridis)
+library(RColorBrewer)
+```
+
+```{r, include=FALSE}
+df <- gapminder
+```
+```{r, include=FALSE}
+head(gapminder)
+```
+```{r, include=FALSE}
+sapply(df, function(x) length(unique(x)))
+```
+
+# Life Expentancy by Continent
+
+```{r, include=FALSE}
+continent_data <- df |>
+                  group_by(continent, year) |>
+                  summarise(avg_exp=mean(lifeExp, na.rm=TRUE))
+```
+
+```{r, include=FALSE}
+continent_levels <- continent_data |>
+                  filter(year==2007) |>
+                  arrange(avg_exp) |>
+                  pull(continent)
+```
+
+```{r, include=FALSE}
+plot_data <- continent_data |>
+              mutate(continent = factor(continent, levels=continent_levels)) |>
+              arrange(continent)
+```
+
+```{r, include=FALSE}
+plot_data |>
+  ggplot(
+    aes(
+      x=year,
+      value=avg_exp,
+      node=continent
+    )
+  ) +
+    geom_sankey_bump()
+```
+
+```{r, echo=FALSE, warning=FALSE, fig.width=8, fig.height=5, fig.align="center"}
+plot_data |>
+  ggplot(aes(x=year, y=avg_exp, color=continent)) +
+    geom_line(linewidth=1) +
+    labs(
+      title="Life Expectancy by Continent",
+      subtitle="1952-2007",
+      y="Average Life Expectancy",
+      x="Year"
+    ) +
+    scale_color_brewer(palette="Dark2") +
+    theme_minimal() +
+    theme(
+      plot.title=element_text(size=20, face="bold"),
+      axis.title=element_text(size=15, face="bold")
+    )
+```
+
+This plot shows the life expectancy year over year of each of the continents that is contained in the data set. We can see from the plot that Africa has the highest life expectancy of all of the continents, while Oceania has the lowest life expectancy. We can also see that from 1952 to 2007 that there is a constant increase in life expectancy across all of the continents.
+
+# Highest mean life expectancy over time period 1952-2007
+
+```{r, include=FALSE}
+top_10 <- df |>
+          group_by(country) |>
+          summarise(avg_exp=mean(lifeExp, na.rm=TRUE)) |>
+          arrange(desc(avg_exp)) |>
+          slice_max(avg_exp, n=10) |>
+          pull(country)
+```
+
+```{r, include=FALSE}
+order_final <- df |>
+                filter(year == 2007 & country %in% top_10) |>
+                arrange(desc(lifeExp)) |>
+                select(country, year) |>
+                mutate(y=seq(from=360, to=-360, by=-80)) |>
+                mutate(year=2011)
+```
+
+
+```{r, include=FALSE}
+plot_df <- df |>
+            filter(country %in% top_10)
+```
+
+Colors chosen by GoogleGemini to best represt each country
+
+Iceland: #03E7DD (light blue, reminiscent of glaciers and ice caves)  
+Sweden: #8BF836 (vibrant yellow, similar to the gold used in their flag)  
+Norway: #FA8683 (salmon pink, reflecting the fjords and the country's fishing industry)  
+Netherlands: #847CF6 (light purple, like the Dutch iris, their national flower)  
+Switzerland: #EBD88F (light yellow, representing the Swiss Alps and cheese)  
+Canada: #B55EC3 (light purple, close to the red in their flag)  
+Japan: #4C68EE (deep blue, reflecting the importance of the ocean in Japanese culture)  
+Australia: #550E14 (dark red, similar to the red earth outback)  
+Denmark: #828012 (olive green, like the rolling hills and forests)  
+France: #49C608 (dark green, reminiscent of the French countryside)  
+
+```{r, include=FALSE}
+country_colors = c(
+  "Iceland"="#03E7DD",
+  "Sweden"="#8BF836",
+  "Norway"="#FA8683",
+  "Netherlands"="#847CF6",
+  "Switzerland"="#EBD88F",
+  "Canada"="#B55EC3",
+  "Japan"="#4C68EE",
+  "Australia"="#550E14",
+  "Denmark"="#828012",
+  "France"="#49C608"
+)
+```
+
+```{r, include=FALSE}
+plot_df |>
+  ggplot() +
+    geom_sankey_bump(
+      aes(
+        x=year,
+        value=lifeExp,
+        node=country,
+        fill=country
+      ),
+      space=0.5,
+      smooth=5,
+      alpha=0.75
+    ) +
+    geom_label(
+      data=order_final,
+      aes(
+        x=year,
+        y=y,
+        label=country
+      ),
+      size=4.5
+    ) +
+    labs(
+      title="Top 10 Countries Life Expentancy",
+      subtitle="1952-2007"
+    ) +
+    scale_fill_manual(values=country_colors) +
+    scale_x_continuous(breaks=seq(1952, 2007, 5), lim=c(1952, 2012)) +
+    theme(
+      panel.background=element_rect(fill="#F0F0F0"),
+      plot.background=element_rect(fill="#F0F0F0"),
+      axis.ticks.y=element_blank(),
+      axis.text.y=element_blank(),
+      axis.title=element_blank(),
+      axis.ticks.x=element_blank(),
+      axis.text.x=element_blank(),
+      plot.title=element_text(size=20, face="bold"),
+      plot.subtitle=element_text(size=15, face="bold"),
+      legend.position="none",
+    )
+```
+
+```{r, echo=FALSE, warning=FALSE, fig.width=10, fig.height=10, fig.align="center"}
+plot_df |>
+  ggplot() +
+    geom_segment(
+      aes(
+        x=year,
+        xend=year,
+        y=-450,
+        yend=400
+      ),
+      color="blue",
+      linetype="dashed",
+      alpha=0.75
+    ) +
+    geom_sankey_bump(
+      aes(
+        x=year,
+        value=lifeExp,
+        node=country,
+        fill=country
+      ),
+      space=0.5,
+      smooth=5,
+      alpha=0.75
+    ) +
+    geom_label(
+      data=order_final,
+      aes(
+        x=year,
+        y=y,
+        label=country
+      ),
+      size=4.5
+    ) +
+    labs(
+      title="Top 10 Countries Life Expentancy",
+      subtitle="1952-2007"
+    ) +
+    scale_fill_manual(values=country_colors) +
+    scale_x_continuous(breaks=seq(1952, 2007, 5), lim=c(1952, 2012)) +
+    theme(
+      panel.background=element_rect(fill="#F0F0F0"),
+      plot.background=element_rect(fill="#F0F0F0"),
+      panel.grid=element_blank(),
+      axis.ticks.y=element_blank(),
+      axis.text.y=element_blank(),
+      axis.title=element_blank(),
+      axis.ticks.x=element_blank(),
+      axis.text.x=element_text(size=15, vjust=10),
+      plot.title=element_text(size=20, face="bold"),
+      plot.subtitle=element_text(size=15, face="bold"),
+      legend.position="none",
+    )
+```
+
+
+This plot shows the comparison of life expectancy across the countries that have the highest life expectancy on average over the time period from 1952 to 2007. Instead of showing numbers on the y-axis, this plot is meant to show the comparison, which countries have higher and lower expectancy and how that ranking changes over time. We can see in example that australia starts of ranked in the bottom 5, takes a major dip between the years of 1967 and 1977, but then has a tremendous increase to end in the top 4 countries by 2007. On the other hand we can see Norway which starts with the highest life expectancy has a major decline over time and end up in the bottom 3 countries by 2007.
+
+
+# GDP per capita Top 10 Countries with highest life expectancy
+
+```{r, include=FALSE}
+plot_df |>
+  filter(country=="Australia") |>
+  ggplot()+
+    geom_point(
+      aes(
+        x=year,
+        y=gdpPercap
+      )
+    ) +
+    geom_segment(
+      aes(
+        x=year,
+        xend=year,
+        y=0,
+        yend=gdpPercap
+      )
+    )
+```
+
+```{r, include=FALSE}
+plot_df |>
+  ggplot(aes(x=year, y=gdpPercap)) +
+    geom_bar(stat="identity") +
+    facet_wrap(~country, ncol=5)
+```
+
+```{r, include=FALSE}
+plot_df |>
+  ggplot(aes(x=gdpPercap, y=year)) +
+    geom_point() +
+    geom_segment(
+      aes(
+        x=0,
+        xend=gdpPercap,
+        y=year,
+        yend=year
+      )
+    ) +
+    labs(
+      title="GDP per Capita",
+      subtitle="Top 10 Countries with Highest Life Expectancy",
+      x="GDP per Capita",
+      y="Year"
+    ) +
+    facet_wrap(~country, ncol=5) +
+    theme_minimal() +
+    theme(
+      plot.title=element_text(size=20, face="bold"),
+      axis.title=element_text(size=15, face="bold"),
+      axis.text.x=element_text(angle=90)
+    )
+```
+
+```{r, echo=FALSE, fig.width=10, fig.height=10, fig.align="center"}
+plot_df |>
+  ggplot(aes(x=year, y=gdpPercap)) +
+    geom_point() +
+    geom_segment(
+      aes(
+        x=year,
+        xend=year,
+        y=0,
+        yend=gdpPercap
+      )
+    ) +
+    labs(
+      title="GDP per Capita",
+      subtitle="Top 10 Countries with Highest Life Expectancy",
+      y="GDP per Capita",
+      x="Year"
+    ) +
+    facet_wrap(~country, ncol=5) +
+    theme_minimal() +
+    theme(
+      plot.title=element_text(size=20, face="bold"),
+      axis.title=element_text(size=15, face="bold"),
+      axis.text.x=element_text(angle=90)
+    )
+```
+
+This plot shows the GDP Per Capita of countries that had the highest average life expectancy over the time period of 1952 to 2007. We are looking at the trend of each countries GDP as well as how it compares to the GDP of the other countries. We can see that Norway had a tremendous growth in GDP and also has the highest GDP in 2007. 
